@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import Navbar from "../components/Navbar";
+import styles from "../styles/index.module.css";
 
 const quotes = [
     "Success is built one step at a time.",
@@ -23,39 +25,26 @@ function Index() {
     };
 
     return (
+        <div className={styles.body}>
         <div
-            style={{
-                minHeight: "100vh",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                flexDirection: "column",
-                backgroundColor: bgColor,
-                transition: "0.4s ease"
-            }}
+            className={styles.MainContainer}
         >
-            <h1 style={{ fontSize: "2.5rem", marginBottom: "20px" }}>
+            <Navbar />
+            <h1 className={styles.title}>
                 🎲 Random Generator Page
             </h1>
 
-            <p style={{ fontSize: "1.3rem", marginBottom: "20px" }}>
+            <p className={styles.quote}>
                 {quote || "Click the button to generate something!"}
             </p>
 
             <button
                 onClick={generateRandom}
-                style={{
-                    padding: "12px 24px",
-                    fontSize: "16px",
-                    borderRadius: "8px",
-                    border: "none",
-                    cursor: "pointer",
-                    backgroundColor: "#000",
-                    color: "#fff"
-                }}
+                className={styles.button}
             >
                 Generate Random
             </button>
+        </div>
         </div>
     );
 }
