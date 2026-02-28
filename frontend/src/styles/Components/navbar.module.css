@@ -1,0 +1,152 @@
+.navbar {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 40px;
+    background: white;
+    color: black;
+    border-radius: 10px;
+    width: 1300px;
+    margin: 0 auto;
+    z-index: 1000;
+}
+
+.navbar .name {
+    font-size: 1.7rem;
+    font-weight: bold;
+}
+
+.right{
+    display: flex;
+}
+.logo {
+    height: 35px;
+    margin-right: 5px;
+    width: auto;
+    object-fit: contain;
+}
+
+.left {
+    display: flex;
+    gap: 10px;
+}
+
+.sus {
+    cursor: pointer;
+    padding: 5px 10px;
+    transition: 0.3s;
+}
+
+.sus:hover {
+    color: #ff8a65;
+}
+
+/* Hamburger button for mobile */
+.hamburger {
+    display: none;
+    cursor: pointer;
+    font-size: 1.7rem;
+    border: none;
+    background: transparent;
+}
+
+/* Mobile menu - hidden by default */
+.mobileMenu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    flex-direction: column;
+    gap: 10px;
+    padding: 15px 20px;
+    border-radius: 0 0 10px 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+}
+
+.dropdown {
+    position: relative;
+    z-index: 1100;
+}
+
+.dropdownMenu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1200;
+    min-width: 120px;
+    padding: 5px 0;
+
+}
+
+.dropdownMenu .sus {
+    display: block;
+    padding: 8px 12px;
+    color: black;
+    white-space: nowrap;
+    transition: background-color 0.2s;
+}
+
+.dropdownMenu .sus:hover {
+    background-color: #f0f4f8;
+    color: #ff8a65;
+}
+
+
+/* Active state for mobile menu */
+.active {
+    display: flex;
+}
+
+/* subtle off‑white for the Sound submenu pane */
+.submenu {
+    background-color: #fafafa;  /* light grey/cream */
+    border-radius: 6px;
+}
+
+/* keep your existing .sus styles, but override here */
+.submenu .sus {
+    padding: 8px 12px;
+    background-color: rgb(232, 232, 232);
+}
+
+/* a slightly darker hover on those submenu items */
+.submenu .sus:hover {
+    background-color: white;
+}
+
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+
+    .left {
+        display: none;
+    }
+
+    .hamburger {
+        display: block;
+    }
+}
+
+
+@media (max-width: 480px) {
+    .navbar {
+        padding: 10px 15px;
+    }
+    .navbar .name {
+        font-size: 1.3rem;
+    }
+    .hamburger {
+        font-size: 1.5rem;
+    }
+    .sus {
+        padding: 5px 8px;
+        font-size: 0.9rem;
+    }
+}

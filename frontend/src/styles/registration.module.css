@@ -282,15 +282,15 @@ input:focus {
 }
 
 .custom-shape-divider-bottom-1740491939 .shape-fill {
-    fill: #00bfa5;
+    fill: #0D47A1;
 }
 
 /* MAP & TEXT */
 .harta {
     position: absolute;
-    height: 480px;
-    width: 650px;
-    right: 48%;
+    height: 430px;
+    width: 630px;
+    right: 49%;
     top: 0px;
     object-fit: contain;
     border-radius: 10px;

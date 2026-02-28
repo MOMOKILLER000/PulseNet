@@ -151,7 +151,7 @@ const Login = () => {
                     ></path>
                 </svg>
             </div>
-            <img src="nush.jpg" className={styles.harta} alt="Map" />
+            <img src="/logo.png" className={styles.harta} alt="Map" />
             <div className={styles['main-container']}>
                 <div className={styles.signup}>
                     <h1 className={styles['signup-titlu']}>Login into your account</h1>

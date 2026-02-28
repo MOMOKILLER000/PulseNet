@@ -168,7 +168,7 @@ const SignUp = () => {
                 </svg>
             </div>
 
-            <img src="nush.jpg" className={styles.harta} alt="Map" />
+            <img src="/logo.png" className={styles.harta} alt="Map" />
             <div className={styles["main-container"]}>
                 <div className={styles.signup}>
                     <h1 className={styles["signup-titlu"]}>Sign Up for Free</h1>
