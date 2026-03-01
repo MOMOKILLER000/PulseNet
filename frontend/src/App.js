@@ -6,6 +6,7 @@ import Loading from './components/Loading';
 const Index = React.lazy(() => import('./pages/Index.js'));
 const SignUp = React.lazy(() => import('./pages/SignUp.js'));
 const Login = React.lazy(() => import('./pages/Login.js'));
+const Profile = React.lazy(() => import('./pages/Profile.js'));
 
 function App() {
   const [user, setUser] = useState(null);
@@ -31,6 +32,7 @@ function App() {
             <Route path="/" element={<Index />} />
               <Route path="/signup" element={<SignUp />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/profile" element={<Profile />} />
           </Routes>
         </Suspense>
       </div>
