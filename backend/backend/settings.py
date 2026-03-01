@@ -138,8 +138,12 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'pulsenet',
+        'USER': os.environ.get('db_user'),
+        'PASSWORD': os.environ.get('db_password'),
+        'HOST': 'db',   # IMPORTANT (service name!)
+        'PORT': '5432',
     }
 }
 
