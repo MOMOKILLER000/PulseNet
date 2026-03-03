@@ -22,4 +22,7 @@ urlpatterns = [
     path("follow-requests/reject/<int:request_id>/", views.reject_follow_request),
     path("unfollow/<int:user_id>/", views.unfollow_user, name="unfollow-user"),
     path("follow-requests/", views.get_follow_requests),
+    path("direct_conversations/create/<int:user2_id>/", views.create_direct_conversation, name="create_conversation"),
+    path("user_profile/<int:user_id>/", views.user_profile, name="user_profile"),
+    path("messages/history/<str:chat_type>/<int:conversation_id>/", views.get_message_history, name="chat_history"),
 ]
