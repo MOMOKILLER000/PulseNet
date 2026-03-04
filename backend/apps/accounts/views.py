@@ -14,6 +14,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from google.auth.transport.requests import Request
 from google.oauth2 import id_token
 from django.contrib.auth.decorators import login_required
+
 from .decorators import api_login_required
 from .models import PendingFollow, Pulse, Friendship, Follow
 import secrets
@@ -821,8 +822,10 @@ def fetch_messages_sync(request, chat_type, conversation_id):
 
     history = [{
         "sender_id": msg.sender.id,
+        "sender_username": msg.sender.username,
         "content": msg.content,
         "timestamp": msg.timestamp.isoformat(),
+        "is_mine": (msg.sender.id == request.user.id),
     } for msg in messages]
 
     return {"history": history, "status": 200}
@@ -853,3 +856,55 @@ async def get_message_history(request, chat_type, conversation_id):
 
     status_code = result.pop("status")
     return JsonResponse(result, status=status_code)
+
+
+@login_required
+def my_conversations(request):
+    if request.method != "GET":
+        return JsonResponse({"error": "Invalid request method"}, status=405)
+
+    user = request.user
+    results = []
+
+    # 1️⃣ Direct Conversations
+    direct_convos = DirectConversation.objects.filter(
+        Q(user1=user) | Q(user2=user)
+    )
+
+    for convo in direct_convos:
+        other_user = convo.user2 if convo.user1 == user else convo.user1
+        last_msg = convo.messages.order_by("-timestamp").first()
+
+        results.append({
+            "id": convo.id,
+            "type": "direct",
+            "name": f"{other_user.first_name} {other_user.last_name}",
+            "username": other_user.username,
+            "last_message": last_msg.content if last_msg else "No messages yet",
+            "timestamp": last_msg.timestamp.isoformat() if last_msg else convo.created_at.isoformat(),
+            "unread": convo.messages.filter(is_read=False)
+                                     .exclude(sender=user)
+                                     .count()
+        })
+
+    # 2️⃣ Group Conversations
+    group_convos = user.conversations.all()
+
+    for convo in group_convos:
+        last_msg = convo.messages.order_by("-timestamp").first()
+
+        results.append({
+            "id": convo.id,
+            "type": "group",
+            "name": f"Group Chat {convo.id}",  # change later if you add name field
+            "last_message": last_msg.content if last_msg else "No messages yet",
+            "timestamp": last_msg.timestamp.isoformat() if last_msg else convo.created_at.isoformat(),
+            "unread": convo.messages.filter(is_read=False)
+                                     .exclude(sender=user)
+                                     .count()
+        })
+
+    # 3️⃣ Sort by most recent
+    results.sort(key=lambda x: x["timestamp"], reverse=True)
+
+    return JsonResponse(results, safe=False)

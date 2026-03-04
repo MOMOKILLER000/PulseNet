@@ -3,6 +3,7 @@ import Navbar from "../components/Navbar";
 import styles from "../styles/profile.module.css";
 import Loading from "../components/Loading";
 import {useParams} from "react-router-dom";
+import { useNavigate } from 'react-router-dom';
 
 function getCookie(name) {
     let cookieValue = null;
@@ -19,19 +20,23 @@ function getCookie(name) {
     return cookieValue;
 }
 
-export default function UserProfile() {
-    const [tab, setTab] = useState("overview");
+
+export default function Profile() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
-    const user_id = useParams().id;
+    const navigate = useNavigate();
+    // Pulse filter — "obiecte" by default
+    const [pulseFilter, setPulseFilter] = useState("obiecte");
+
     // image/upload state
-    const [preview, setPreview] = useState(null); // local preview URL or server url
+    const [preview, setPreview] = useState(null);
+    const fileInputRef = useRef(null);
+    const { id } = useParams();
 
 
     useEffect(() => {
-        console.log(user_id);
         const csrfToken = getCookie('csrftoken');
-        fetch(`http://localhost:8000/accounts/user_profile/${user_id}/`, {
+        fetch(`http://localhost:8000/accounts/user_profile/${id}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -51,31 +56,24 @@ export default function UserProfile() {
                 console.error("Error fetching profile:", error);
                 setLoading(false);
             });
-    }, [user_id]);
+    }, []);
 
     const isUserSleeping = () => {
         if (!user?.quiet_hours_start || !user?.quiet_hours_end) return false;
-
         const now = new Date();
-
         const [startHour, startMinute] = user.quiet_hours_start.split(":").map(Number);
         const [endHour, endMinute] = user.quiet_hours_end.split(":").map(Number);
-
         const start = new Date();
         start.setHours(startHour, startMinute, 0);
-
         const end = new Date();
         end.setHours(endHour, endMinute, 0);
-
-        // Handles quiet hours that cross midnight
         if (end < start) {
             if (now >= start) return true;
-            const midnight = new Date(start);
-            midnight.setHours(24, 0, 0);
             if (now <= end || now >= start) return true;
         }
         return now >= start && now <= end;
     };
+
 
     const handleUserAction = async (e, targetUser, action) => {
         e.stopPropagation();
@@ -115,37 +113,32 @@ export default function UserProfile() {
         }
     };
 
-    // 3. Protect useMemo from null user
-    const filteredObjects = useMemo(() => {
-        return user ? user.objects : [];
-    }, [user]);
+    const filteredPulses = useMemo(() => {
+        if (!user || !user.pulses) return [];
+        return user.pulses.filter(p => p.pulseType === pulseFilter);
+    }, [user, pulseFilter]);
 
 
-    // 4. THE LOADING GUARD
-    if (loading) {
-        return <Loading />
-    }
 
-    if (!user) {
-        return <div className={styles.error}>Could not load user data.</div>;
-    }
+    if (loading) return <Loading />;
+    if (!user) return <div className={styles.error}>Could not load user data.</div>;
 
     return (
         <div className={styles.body}>
             <div className={styles.mainContainer}>
-                <Navbar/>
+                <Navbar />
 
                 <div className={styles.container}>
                     {/* Cover Photo */}
                     <div className={styles.coverPhoto}></div>
+
                     {/* HEADER CARD */}
                     <div className={styles.headerCard}>
                         <div className={styles.headerLayout}>
+
                             {/* Avatar & Trust Score */}
                             <div className={styles.avatarSection}>
                                 <div className={styles.avatarWrapper}>
-
-                                    {/* Avatar Image */}
                                     <div
                                         className={styles.avatar}
                                         style={{
@@ -156,6 +149,7 @@ export default function UserProfile() {
                                                     : "url(/defaultImage.png)"
                                         }}
                                     />
+
                                 </div>
 
                                 <div className={styles.trustBadge}>
@@ -166,7 +160,13 @@ export default function UserProfile() {
 
                             <div className={styles.actionWrapper}>
                                 {(user.is_friend || !user.private_account) && (
-                                    <button className={styles.msgBtn} >
+                                    <button
+                                        className={styles.msgBtn}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            navigate(`/direct-chat/${id}`);
+                                        }}
+                                    >
                                         DM
                                     </button>
                                 )}
@@ -186,32 +186,27 @@ export default function UserProfile() {
                             </div>
                             {/* Profile Info / Edit Form */}
                             <div className={styles.profileInfo}>
-
                                     <div className={styles.infoContent}>
-
                                         <div className={styles.statusBottomRight}>
                                             <div className={styles.statusRowInline}>
-
                                                 <div className={styles.statusItem}>
-                                                <span
-                                                    className={
-                                                        user.onlineStatus === "online"
-                                                            ? styles.statusOnline
-                                                            : user.onlineStatus === "away"
-                                                                ? styles.statusAway
-                                                                : user.onlineStatus === "do_not_disturb"
-                                                                    ? styles.statusDnd
-                                                                    : styles.statusOffline
-                                                    }
-                                                >
-                                                 ●
-                                                </span>
-
+                                                    <span
+                                                        className={
+                                                            user.onlineStatus === "online"
+                                                                ? styles.statusOnline
+                                                                : user.onlineStatus === "away"
+                                                                    ? styles.statusAway
+                                                                    : user.onlineStatus === "do_not_disturb"
+                                                                        ? styles.statusDnd
+                                                                        : styles.statusOffline
+                                                        }
+                                                    >
+                                                        ●
+                                                    </span>
                                                     <span className={styles.statusText}>
-                {user.onlineStatus?.replace("_", " ")}
-            </span>
+                                                        {user.onlineStatus?.replace("_", " ")}
+                                                    </span>
                                                 </div>
-
                                                 {user.quiet_hours_start &&
                                                     user.quiet_hours_end &&
                                                     isUserSleeping() && (
@@ -219,7 +214,6 @@ export default function UserProfile() {
                                                             😴 Sleeping
                                                         </div>
                                                     )}
-
                                             </div>
                                         </div>
 
@@ -227,7 +221,6 @@ export default function UserProfile() {
                                             <h1 className={styles.title}>
                                                 {user.firstName} {user.lastName}
                                             </h1>
-
                                             {user.isVerified && (
                                                 <span className={styles.verified}>✓ Verified</span>
                                             )}
@@ -245,94 +238,74 @@ export default function UserProfile() {
                         </div>
                     </div>
 
-                    {/* SEGMENTED TABS (unchanged) */}
-                    <div className={styles.tabsContainer}>
-                        <div className={styles.tabs}>
-                            {[
-                                {key: "overview", label: "Overview"},
-                                {key: "skills", label: "Skills"},
-                                {key: "objects", label: "User Objects"},
-                            ].map((t) => (
-                                <button
-                                    key={t.key}
-                                    className={tab === t.key ? styles.activeTab : styles.tab}
-                                    onClick={() => setTab(t.key)}
-                                >
-                                    {t.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* TAB CONTENT (unchanged) */}
+                    {/* PULSES SECTION */}
                     <div className={styles.contentArea}>
-                        {tab === "overview" && (
-                            <div className={styles.statsGrid}>
-                                <div className={styles.statBox}>
-                                    <span className={styles.statLabel}>Items Listed</span>
-                                    <span className={styles.statValue}></span>
-                                </div>
-                                <div className={styles.statBox}>
-                                    <span className={styles.statLabel}>Active Loans</span>
-                                    <span className={styles.statValue}></span>
-                                </div>
-                                <div className={styles.statBox}>
-                                    <span className={styles.statLabel}>Endorsements</span>
-                                    <span className={styles.statValue}></span>
-                                </div>
-                                <div className={styles.statBox}>
-                                    <span className={styles.statLabel}>Trust Score</span>
-                                    <span className={styles.statValue}>{user.trustScore}%</span>
-                                </div>
+                        <div className={styles.card}>
+                            <div className={styles.pulsesHeader}>
+                                <h2 className={styles.sectionTitle}>Anunțurile mele</h2>
+                                <select
+                                    className={styles.pulseTypeDropdown}
+                                    value={pulseFilter}
+                                    onChange={(e) => setPulseFilter(e.target.value)}
+                                >
+                                    <option value="obiecte">Obiecte</option>
+                                    <option value="servicii">Servicii</option>
+                                </select>
                             </div>
-                        )}
 
-                        {tab === "skills" && (
-                            <div className={styles.card}>
-                                <h2 className={styles.sectionTitle}>Skills & Expertise</h2>
-
-
-                                <div className={styles.skillGrid}>
-                                    {user.skills.map((skill) => (
-                                        <div key={skill.id} className={styles.skillCard}>
-                                            <div>
-                                                <span className={styles.skillName}>{skill.name}</span>
-                                                <span className={styles.skillLevel}> — {skill.proficiency_level}</span>
-                                            </div>
-                                            <div>
+                            {/* Pulse list */}
+                            <div className={styles.objectGrid}>
+                                {filteredPulses.length === 0 && (
+                                    <p className={styles.emptyState}>
+                                        Niciun anunț de tip „{pulseFilter}" încă.
+                                    </p>
+                                )}
+                                {filteredPulses.map((pulse) => (
+                                    <div key={pulse.id} className={styles.objectCard}>
+                                        <div className={styles.objectImage}>
+                                            {pulse.images && pulse.images.length > 0 ? (
+                                                <img
+                                                    src={pulse.images[0]}
+                                                    alt={pulse.title}
+                                                    className={styles.pulseImage}
+                                                />
+                                            ) : (
+                                                <span className={styles.imagePlaceholder}>
+                    {pulseFilter === "obiecte" ? "📦" : "🛠️"}
+                </span>
+                                            )}
+                                        </div>
+                                        <div className={styles.objectInfo}>
+                                            <h3 className={styles.objectName}>{pulse.title}</h3>
+                                            {pulse.category && (
+                                                <p className={styles.pulseCategory}>{pulse.category}</p>
+                                            )}
+                                            {pulse.phone_number && (
+                                                <p className={styles.pulsePhone}>📞 {pulse.phone_number}</p>
+                                            )}
+                                            <p className={styles.pulseDate}>
+                                                Postat: {new Date(pulse.created_at || Date.now()).toLocaleString('ro-RO', {
+                                                day: '2-digit',
+                                                month: '2-digit',
+                                                year: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })}
+                                            </p>
+                                            <div className={styles.objectMeta}>
+                                                {pulse.price != null && (
+                                                    <span className={styles.price}>
+                        {pulse.price} {pulse.currencyType || "lei"}
+                    </span>
+                                                )}
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {tab === "objects" && (
-                            <div className={styles.card}>
-                                <h2 className={styles.sectionTitle}>Available Objects</h2>
-
-
-                                <div className={styles.objectGrid}>
-                                    {filteredObjects.map((obj) => (
-                                        <div key={obj.id} className={styles.objectCard}>
-                                            <div className={styles.objectImage}>
-                                                <span className={styles.imagePlaceholder}>📸</span>
-                                            </div>
-                                            <div className={styles.objectInfo}>
-                                                <h3 className={styles.objectName}>{obj.name}</h3>
-                                                <div className={styles.objectMeta}>
-                                                    <span className={styles.price}>${obj.price_per_day}/day</span>
-                                                    <span
-                                                        className={obj.isAvailable ? styles.availableBadge : styles.unavailableBadge}>
-                                                        {obj.isAvailable ? "Available" : "In Use"}
-                                                    </span>
-                                                </div>
-                                            </div>
+                                        <div className={styles.objectActions}>
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
+                                ))}
                             </div>
-                        )}
+                        </div>
                     </div>
                 </div>
             </div>

@@ -7,10 +7,11 @@
     background: white;
     color: black;
     border-radius: 10px;
-    max-width: 1300px; /* Changed from width to max-width for better responsiveness */
+    max-width: 1300px;
     width: 100%;
     margin: 0 auto;
     z-index: 1000;
+    border-bottom: 1px solid #efefef; /* Optional: adds definition */
 }
 
 .navbar .name {
@@ -18,9 +19,10 @@
     font-weight: bold;
 }
 
-.right {
+.brandContainer { /* Renamed from .right for clarity */
     display: flex;
     align-items: center;
+    flex-shrink: 0;
 }
 
 .logo {
@@ -31,11 +33,21 @@
     cursor: pointer;
 }
 
-/* --- Search Bar Container --- */
+/* --- MIDDLE SECTION (Search + DM Button) --- */
+.middleSection {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex: 1;
+    justify-content: center;
+    max-width: 550px; /* Keeps search and icon from drifting too far apart */
+    margin: 0 20px;
+}
+
 .searchContainer {
     position: relative;
-    flex: 0 1 400px; /* Grows to 400px but shrinks if space is tight */
-    margin: 0 20px;
+    width: 100%;
+    max-width: 400px;
 }
 
 .searchInput {
@@ -53,6 +65,42 @@
     background-color: #fff;
     border-color: #ff8a65;
     box-shadow: 0 0 0 2px rgba(255, 138, 101, 0.2);
+}
+
+/* --- THE COOL DM BUTTON --- */
+.dmButton {
+    position: relative;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    color: #262626;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.2s ease;
+    flex-shrink: 0;
+}
+
+.dmButton:hover {
+    transform: scale(1.15);
+    color: #ff8a65; /* Matches your theme */
+}
+
+.activeDm {
+    color: #000;
+}
+
+.badge {
+    position: absolute;
+    top: -6px;
+    right: -8px;
+    background-color: #ff3b30; /* Notification red */
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 5px;
+    border-radius: 10px;
+    border: 2px solid white;
+    line-height: 1;
+    min-width: 12px;
+    text-align: center;
 }
 
 /* --- Search Dropdown --- */
@@ -99,17 +147,7 @@
     color: #65676b;
 }
 
-.friendBadge {
-    font-size: 11px;
-    background: #e7f3ff;
-    color: #1877f2;
-    padding: 2px 6px;
-    border-radius: 4px;
-    margin-top: 4px;
-    width: fit-content;
-}
-
-/* --- Action Buttons inside Search --- */
+/* --- Action Buttons --- */
 .userActions {
     display: flex;
     gap: 8px;
@@ -122,45 +160,17 @@
     border-radius: 8px;
     border: none;
     cursor: pointer;
-    transition: transform 0.1s active;
 }
 
-.followBtn {
-    background-color: #0095f6;
-    color: white;
-}
-
-.followBtn:hover {
-    background-color: #1877f2;
-}
-
-.unfollowBtn {
-    background-color: #f0f2f5;
-    color: #050505;
-}
-
-.unfollowBtn:hover {
-    background-color: #e4e6eb;
-}
-
-.pendingBtn {
-    background-color: #dbdbdb;
-    color: #4b4b4b;
-}
-
-.msgBtn {
-    background-color: #ff8a65;
-    color: white;
-}
-
-.msgBtn:hover {
-    background-color: #f4511e;
-}
+.followBtn { background-color: #0095f6; color: white; }
+.unfollowBtn { background-color: #f0f2f5; color: #050505; }
+.msgBtn { background-color: #ff8a65; color: white; }
 
 /* --- Navigation Links --- */
-.left {
+.navLinks {
     display: flex;
     gap: 10px;
+    flex-shrink: 0;
 }
 
 .sus {
@@ -174,7 +184,7 @@
     color: #ff8a65;
 }
 
-/* Hamburger button for mobile */
+/* --- Responsive & Mobile --- */
 .hamburger {
     display: none;
     cursor: pointer;
@@ -183,7 +193,6 @@
     background: transparent;
 }
 
-/* Mobile menu */
 .mobileMenu {
     display: none;
     position: absolute;
@@ -199,44 +208,23 @@
     z-index: 10;
 }
 
-.active {
-    display: flex;
-}
+.active { display: flex; }
 
-/* Responsive adjustments */
 @media (max-width: 900px) {
-    .searchContainer {
+    .middleSection {
         flex: 1;
         margin: 0 10px;
     }
 }
 
 @media (max-width: 768px) {
-    .left {
-        display: none;
-    }
-
-    .hamburger {
-        display: block;
-    }
-
-    .searchContainer {
-        margin: 0 15px;
-    }
+    .navLinks { display: none; }
+    .hamburger { display: block; }
 }
 
 @media (max-width: 480px) {
-    .navbar {
-        padding: 10px 15px;
-    }
-    .navbar .name {
-        display: none; /* Hide name on tiny screens to save space for search */
-    }
-    .searchContainer {
-        margin: 0 5px;
-    }
-    .searchInput {
-        padding: 8px 12px;
-        font-size: 0.85rem;
-    }
+    .navbar { padding: 10px 15px; }
+    .navbar .name { display: none; }
+    .middleSection { gap: 10px; }
+    .searchInput { padding: 8px 12px; font-size: 0.85rem; }
 }

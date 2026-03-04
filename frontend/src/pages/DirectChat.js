@@ -112,14 +112,32 @@ const DirectChat = ({ currentUser }) => {
 
             <div className={styles.messageWindow}>
                 {messages.map((msg, idx) => {
-                    const isMe = msg.sender_id === currentUser?.id;
+                    // 1. Extract the Sender ID from all possible fields (DirectMessage vs GroupMessage)
+                    // Checks msg.sender_id (from your sync view) or msg.sender (common in WS)
+                    const rawSenderId = msg.sender_id || (msg.sender && (msg.sender.id || msg.sender));
+
+                    // 2. Extract the Current User ID
+                    const rawCurrentUserId = currentUser?.id || currentUser?.pk;
+
+                    // 3. Stringify and compare
+                    const msgSenderId = String(rawSenderId || "");
+                    const currentUserId = String(rawCurrentUserId || "");
+
+                    // 4. Determine if it's "Me"
+                    // If IDs match OR (as a backup) usernames match
+                    const isMe = (currentUserId !== "" && msgSenderId === currentUserId) ||
+                        (msg.sender === currentUser?.username && currentUser?.username !== undefined);
+
                     return (
-                        <div key={idx} className={`${styles.messageRow} ${isMe ? styles.justifyEnd : styles.justifyStart}`}>
+                        <div
+                            key={idx}
+                            className={`${styles.messageRow} ${isMe ? styles.justifyEnd : styles.justifyStart}`}
+                        >
                             <div className={`${styles.bubble} ${isMe ? styles.myBubble : styles.theirBubble}`}>
                                 <p className={styles.messageText}>{msg.content}</p>
                                 <span className={`${styles.timestamp} ${isMe ? styles.myTimestamp : styles.theirTimestamp}`}>
-                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
+                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                             </div>
                         </div>
                     );
