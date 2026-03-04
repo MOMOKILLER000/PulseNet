@@ -36,7 +36,7 @@
 }
 
 .headerLayout {
-    @apply flex flex-col sm:flex-row gap-8 items-start;
+    @apply flex flex-col sm:flex-row gap-4 md:gap-8 items-start;
 }
 
 /* AVATAR & TRUST */
@@ -98,6 +98,40 @@
 
 .infoContent {
     @apply flex flex-col items-start;
+}
+
+.actionWrapper {
+    /* Mobile: Centered under the content, relative positioning */
+    @apply relative mt-0 flex justify-center gap-0 w-full;
+
+    /* Desktop (768px and up): Back to the top-right corner */
+    @apply md:absolute md:top-4 md:right-4 md:mt-0 md:w-auto;
+}
+
+/* Base button styles */
+.btnBase {
+    @apply px-4 py-2 mr-2 text-sm font-semibold rounded-lg cursor-pointer transition-all duration-200 border-none outline-none;
+}
+
+.msgBtn {
+    @apply btnBase bg-orange-50 text-orange-600 hover:bg-orange-100 active:scale-95;
+    /* Optional: adds a subtle border to match the soft vibe */
+    @apply border border-orange-200;
+}
+
+/* Follow: blue-600 */
+.followBtn {
+    @apply btnBase bg-blue-600 text-white hover:bg-blue-700 hover:-translate-y-0.5 shadow-sm active:scale-95;
+}
+
+/* Unfollow: red-100/600 */
+.unfollowBtn {
+    @apply btnBase bg-red-100 text-red-600 hover:bg-red-200 active:scale-95;
+}
+
+/* Requested: gray-100 */
+.pendingBtn {
+    @apply btnBase bg-gray-100 text-gray-600 cursor-default;
 }
 
 .titleRow {

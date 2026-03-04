@@ -154,7 +154,7 @@ class Friendship(models.Model):
         unique_together = ("user1", "user2")
 
 
-class Conversation(models.Model):
+class Group_Conversation(models.Model):
     participants = models.ManyToManyField(
         User,
         related_name="conversations"
@@ -166,9 +166,11 @@ class Conversation(models.Model):
         return f"Conversation {self.id}"
 
 
-class Message(models.Model):
+
+
+class Group_Message(models.Model):
     conversation = models.ForeignKey(
-        Conversation,
+        Group_Conversation,
         on_delete=models.CASCADE,
         related_name="messages"
     )
@@ -183,3 +185,34 @@ class Message(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
 
     is_read = models.BooleanField(default=False)
+
+
+class DirectConversation(models.Model):
+    # Ensure only 2 users can be in a direct chat
+    user1 = models.ForeignKey(User, on_delete=models.CASCADE, related_name="direct_chats_as_user1")
+    user2 = models.ForeignKey(User, on_delete=models.CASCADE, related_name="direct_chats_as_user2")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # Prevent duplicate conversations between the same two users
+        unique_together = ('user1', 'user2')
+
+    def __str__(self):
+        return f"Direct Chat: {self.user1.email} & {self.user2.email}"
+
+class DirectMessage(models.Model):
+    conversation = models.ForeignKey(
+        DirectConversation,
+        on_delete=models.CASCADE,
+        related_name="messages"
+    )
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    content = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['timestamp']
+
+    def __str__(self):
+        return f"From {self.sender.email} at {self.timestamp}"

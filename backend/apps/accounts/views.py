@@ -15,14 +15,11 @@ from google.auth.transport.requests import Request
 from google.oauth2 import id_token
 from django.contrib.auth.decorators import login_required
 from .decorators import api_login_required
-from .models import Pulse, PulseImage, PendingFollow
+from .models import Skill, UserObject, PendingFollow, Pulse, Friendship
 import secrets
 import string
 from django.contrib.auth.hashers import make_password
 
-#Nu sterge sau crapa tot
-User = get_user_model()
-#Gen don't
 
 def generate_password(length=12):
     alphabet = string.ascii_letters + string.digits + string.punctuation
@@ -223,20 +220,34 @@ def profile(request):
     if request.method == "GET":
         user = request.user
 
-        pulses = Pulse.objects.filter(user=user).prefetch_related('images')
+        skills = Skill.objects.filter(user=user)
+        objects = UserObject.objects.filter(owner=user)
 
-        pulses_data = [
+        skills_data = [
             {
-                "id": p.id,
-                "title": p.title,
-                "pulseType": p.pulse_type,
-                "category": p.category,
-                "price": float(p.price),
-                "currencyType": p.currencyType,
-                "description": p.description,
-                "images": [request.build_absolute_uri(img.image.url) for img in p.images.all()],
-                "phone_number" : p.phone_number,
-            } for p in pulses
+                "id": skill.id,
+                "name": skill.name,
+                "category": skill.category,
+                "proficiency_level": skill.proficiency_level,
+                "years_of_experience": skill.years_of_experience,
+                "added_at": skill.added_at,
+            }
+            for skill in skills
+        ]
+
+        objects_data = [
+            {
+                "id": obj.id,
+                "name": obj.name,
+                "description": obj.description,
+                "category": obj.category,
+                "condition": obj.condition,
+                "isAvailable": obj.is_available,
+                "price_per_day": obj.price_per_day,
+                "image": request.build_absolute_uri(obj.image.url) if obj.image else None,
+                "created_at": obj.created_at,
+            }
+            for obj in objects
         ]
 
         user_data = {
@@ -254,7 +265,8 @@ def profile(request):
             "trustScore": user.trust_score,
             "isVerified": user.is_verified,
             "onlineStatus": user.online_status,
-            "pulses": pulses_data,
+            "skills": skills_data,
+            "objects": objects_data,
         }
 
         return JsonResponse({"user": user_data})
@@ -267,10 +279,12 @@ def profile(request):
 @require_http_methods(["PUT"])
 def update_profile(request):
     try:
+        # 1. Parse JSON data from the request body
         data = json.loads(request.body)
         user = request.user
 
-        # 1. Update câmpuri user
+        # 2. Update model fields based on React's camelCase keys
+        # Use .get() to keep current values if a field is missing
         user.first_name = data.get('firstName', user.first_name)
         user.last_name = data.get('lastName', user.last_name)
         user.username = data.get('username', user.username)
@@ -280,6 +294,7 @@ def update_profile(request):
         user.quiet_hours_start = data.get("quiet_hours_start", user.quiet_hours_start)
         user.quiet_hours_end = data.get("quiet_hours_end", user.quiet_hours_end)
 
+        # 3. Validate and save
         user.save()
 
         # 2. Re-aducem pulsurile pentru a sincroniza complet frontend-ul
@@ -306,6 +321,8 @@ def update_profile(request):
                 "username": user.username,
                 "profilePicture": request.build_absolute_uri(user.profile_picture.url) if user.profile_picture else None,
                 "biography": user.biography,
+                "location": user.location,
+                "distanceRadius": user.distance_radius,
                 "quiet_hours_start": user.quiet_hours_start,
                 "quiet_hours_end": user.quiet_hours_end,
                 "trustScore": user.trust_score,
@@ -317,6 +334,8 @@ def update_profile(request):
 
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON format"}, status=400)
+    except ValidationError as e:
+        return JsonResponse({"error": e.message_dict}, status=400)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
@@ -450,6 +469,7 @@ def add_pulse(request):
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=400)
 
+#adauga obiect in profile page
 @login_required
 @require_http_methods(["DELETE"])
 def remove_pulse(request, pulse_id):
@@ -460,6 +480,20 @@ def remove_pulse(request, pulse_id):
     except Pulse.DoesNotExist:
         return JsonResponse({"success": False, "error": "Pulsul nu a fost găsit"}, status=404)
 
+    except UserObject.DoesNotExist:
+        return JsonResponse(
+            {"success": False, "error": "Object not found"},
+            status=404
+        )
+    except Exception as e:
+        # If this triggers, check your console to see the specific error
+        return JsonResponse(
+            {"success": False, "error": str(e)},
+            status=400
+        )
+
+
+# Searching and relathionships views
 
 @csrf_protect
 @login_required
@@ -499,6 +533,7 @@ def get_pulses(request):
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=400)
 
+User = get_user_model()
 
 @csrf_exempt
 @login_required
@@ -547,6 +582,84 @@ def search_users(request):
         })
 
     return JsonResponse({"users": results})
+
+
+
+@login_required
+def user_profile(request, user_id):
+    if request.method == "GET":
+        user = User.objects.get(id=user_id)
+
+        skills = Skill.objects.filter(user=user)
+        objects = UserObject.objects.filter(owner=user)
+        is_friend = Friendship.objects.filter(
+            user1_id=min(request.user.id, user.id),
+            user2_id=max(request.user.id, user.id),
+        ).exists()
+
+        skills_data = [
+            {
+                "id": skill.id,
+                "name": skill.name,
+                "category": skill.category,
+                "proficiency_level": skill.proficiency_level,
+                "years_of_experience": skill.years_of_experience,
+                "added_at": skill.added_at,
+            }
+            for skill in skills
+        ]
+
+        objects_data = [
+            {
+                "id": obj.id,
+                "name": obj.name,
+                "description": obj.description,
+                "category": obj.category,
+                "condition": obj.condition,
+                "isAvailable": obj.is_available,
+                "price_per_day": obj.price_per_day,
+                "image": request.build_absolute_uri(obj.image.url) if obj.image else None,
+                "created_at": obj.created_at,
+            }
+            for obj in objects
+        ]
+
+        user_data = {
+            "id": user.id,
+            "email": user.email,
+            "firstName": user.first_name,
+            "lastName": user.last_name,
+            "username": user.username,
+            "profilePicture": request.build_absolute_uri(user.profile_picture.url) if user.profile_picture else None,
+            "biography": user.biography,
+            "location": user.location,
+            "distanceRadius": user.distance_radius,
+            "quiet_hours_start": user.quiet_hours_start,
+            "quiet_hours_end": user.quiet_hours_end,
+            "trustScore": user.trust_score,
+            "isVerified": user.is_verified,
+            "onlineStatus": user.online_status,
+            "private_account": user.private_account,
+            "is_following": Follow.objects.filter(
+                follower=request.user,
+                following=user
+            ).exists(),
+
+            "pending_follow": PendingFollow.objects.filter(
+                requester=request.user,
+                target=user
+            ).exists(),
+
+            "is_friend": is_friend,
+            "skills": skills_data,
+            "objects": objects_data,
+        }
+
+        return JsonResponse({"user": user_data})
+
+    return JsonResponse({"error": "Method not allowed"}, status=405)
+
+
 
 @csrf_exempt
 @login_required
@@ -675,3 +788,98 @@ def get_follow_requests(request):
     ]
 
     return JsonResponse({"requests": data})
+
+
+from django.http import JsonResponse
+from asgiref.sync import sync_to_async
+from django.db.models import Q
+from .models import User, DirectConversation, Friendship, DirectMessage, Group_Message
+
+
+# --- SYNC HELPERS ---
+
+def handle_create_conversation_sync(request, user2_id):
+    """
+    Accessing request.user here is safe because sync_to_async
+    has moved us to a standard synchronous thread.
+    """
+    try:
+        if not request.user.is_authenticated:
+            return {"error": "Authentication required", "status": 401}
+
+        user1 = request.user
+        try:
+            user2 = User.objects.get(id=user2_id)
+        except User.DoesNotExist:
+            return {"error": "User not found", "status": 404}
+
+        if user1.id == user2.id:
+            return {"error": "Cannot chat with yourself", "status": 400}
+
+        # Order users by ID for the unique_together constraint
+        u_first, u_second = (user1, user2) if user1.id < user2.id else (user2, user1)
+
+        is_friend = Friendship.objects.filter(user1_id=u_first.id, user2_id=u_second.id).exists()
+        is_public = not getattr(user2, 'private_account', False)
+
+        if is_friend or is_public:
+            conversation, created = DirectConversation.objects.get_or_create(
+                user1=u_first,
+                user2=u_second
+            )
+            return {
+                "conversation_id": conversation.id,
+                "created": created,
+                "status": 200
+            }
+
+        return {"error": "Privacy settings prevent messaging", "status": 403}
+
+    except Exception as e:
+        return {"error": str(e), "status": 500}
+
+
+def fetch_messages_sync(request, chat_type, conversation_id):
+    """Safely handles session check and message fetching in sync thread."""
+    if not request.user.is_authenticated:
+        return {"error": "Unauthorized", "status": 401}
+
+    if chat_type == "direct":
+        messages = DirectMessage.objects.filter(conversation_id=conversation_id).order_by('timestamp')[:50]
+    else:
+        messages = Group_Message.objects.filter(conversation_id=conversation_id).order_by('timestamp')[:50]
+
+    history = [{
+        "sender_id": msg.sender.id,
+        "content": msg.content,
+        "timestamp": msg.timestamp.isoformat(),
+    } for msg in messages]
+
+    return {"history": history, "status": 200}
+
+
+# --- ASYNC VIEWS ---
+
+async def create_direct_conversation(request, user2_id):
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    # VITAL: We pass 'request' itself, NOT 'request.user'
+    result = await sync_to_async(handle_create_conversation_sync, thread_sensitive=True)(
+        request, user2_id
+    )
+
+    status_code = result.pop("status")
+    return JsonResponse(result, status=status_code)
+
+
+async def get_message_history(request, chat_type, conversation_id):
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    result = await sync_to_async(fetch_messages_sync, thread_sensitive=True)(
+        request, chat_type, conversation_id
+    )
+
+    status_code = result.pop("status")
+    return JsonResponse(result, status=status_code)
