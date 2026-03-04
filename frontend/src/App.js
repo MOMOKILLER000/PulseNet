@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Loading from './components/Loading';
 
 
+
 const Index = React.lazy(() => import('./pages/Index.js'));
 const SignUp = React.lazy(() => import('./pages/SignUp.js'));
 const Login = React.lazy(() => import('./pages/Login.js'));
@@ -10,6 +11,7 @@ const Profile = React.lazy(() => import('./pages/Profile.js'));
 const SearchUsers = React.lazy(() => import('./pages/SearchUsers.js'));
 const FollowRequests = React.lazy(() => import('./pages/FollowRequests.js'));
 const PulseDetails = React.lazy(() => import('./pages/PulseDetails.js'));
+const AddPulses = React.lazy(() => import('./pages/AddPulses.js'));
 
 function App() {
   const [user, setUser] = useState(null);
@@ -39,6 +41,7 @@ function App() {
               <Route path="/search-users" element={<SearchUsers />} />
               <Route path="/follow-requests" element={<FollowRequests />} />
               <Route path="pulse/:type/:id" element={<PulseDetails />} />
+              <Route path="/add-pulse" element={<AddPulses/>} />
           </Routes>
         </Suspense>
       </div>

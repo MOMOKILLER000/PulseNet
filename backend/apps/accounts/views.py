@@ -15,11 +15,14 @@ from google.auth.transport.requests import Request
 from google.oauth2 import id_token
 from django.contrib.auth.decorators import login_required
 from .decorators import api_login_required
-from .models import Skill, UserObject, PendingFollow
+from .models import Pulse, PulseImage, PendingFollow
 import secrets
 import string
 from django.contrib.auth.hashers import make_password
 
+#Nu sterge sau crapa tot
+User = get_user_model()
+#Gen don't
 
 def generate_password(length=12):
     alphabet = string.ascii_letters + string.digits + string.punctuation
@@ -220,34 +223,20 @@ def profile(request):
     if request.method == "GET":
         user = request.user
 
-        skills = Skill.objects.filter(user=user)
-        objects = UserObject.objects.filter(owner=user)
+        pulses = Pulse.objects.filter(user=user).prefetch_related('images')
 
-        skills_data = [
+        pulses_data = [
             {
-                "id": skill.id,
-                "name": skill.name,
-                "category": skill.category,
-                "proficiency_level": skill.proficiency_level,
-                "years_of_experience": skill.years_of_experience,
-                "added_at": skill.added_at,
-            }
-            for skill in skills
-        ]
-
-        objects_data = [
-            {
-                "id": obj.id,
-                "name": obj.name,
-                "description": obj.description,
-                "category": obj.category,
-                "condition": obj.condition,
-                "isAvailable": obj.is_available,
-                "price_per_day": obj.price_per_day,
-                "image": request.build_absolute_uri(obj.image.url) if obj.image else None,
-                "created_at": obj.created_at,
-            }
-            for obj in objects
+                "id": p.id,
+                "title": p.title,
+                "pulseType": p.pulse_type,
+                "category": p.category,
+                "price": float(p.price),
+                "currencyType": p.currencyType,
+                "description": p.description,
+                "images": [request.build_absolute_uri(img.image.url) for img in p.images.all()],
+                "phone_number" : p.phone_number,
+            } for p in pulses
         ]
 
         user_data = {
@@ -265,8 +254,7 @@ def profile(request):
             "trustScore": user.trust_score,
             "isVerified": user.is_verified,
             "onlineStatus": user.online_status,
-            "skills": skills_data,
-            "objects": objects_data,
+            "pulses": pulses_data,
         }
 
         return JsonResponse({"user": user_data})
@@ -279,12 +267,10 @@ def profile(request):
 @require_http_methods(["PUT"])
 def update_profile(request):
     try:
-        # 1. Parse JSON data from the request body
         data = json.loads(request.body)
         user = request.user
 
-        # 2. Update model fields based on React's camelCase keys
-        # Use .get() to keep current values if a field is missing
+        # 1. Update câmpuri user
         user.first_name = data.get('firstName', user.first_name)
         user.last_name = data.get('lastName', user.last_name)
         user.username = data.get('username', user.username)
@@ -294,10 +280,22 @@ def update_profile(request):
         user.quiet_hours_start = data.get("quiet_hours_start", user.quiet_hours_start)
         user.quiet_hours_end = data.get("quiet_hours_end", user.quiet_hours_end)
 
-        # 3. Validate and save
         user.save()
 
-        # 4. Return the updated user object to sync the frontend state
+        # 2. Re-aducem pulsurile pentru a sincroniza complet frontend-ul
+        # Folosim aceiași logică ca în view-ul de profile
+        pulses = Pulse.objects.filter(user=user).prefetch_related('images')
+        pulses_data = [
+            {
+                "id": p.id,
+                "title": p.title,
+                "pulseType": p.pulse_type,
+                "price": float(p.price),
+                "currencyType": p.currencyType,
+                "images": [request.build_absolute_uri(img.image.url) for img in p.images.all()],
+            } for p in pulses
+        ]
+
         return JsonResponse({
             "message": "Success",
             "user": {
@@ -308,22 +306,17 @@ def update_profile(request):
                 "username": user.username,
                 "profilePicture": request.build_absolute_uri(user.profile_picture.url) if user.profile_picture else None,
                 "biography": user.biography,
-                "location": user.location,
-                "distanceRadius": user.distance_radius,
                 "quiet_hours_start": user.quiet_hours_start,
                 "quiet_hours_end": user.quiet_hours_end,
                 "trustScore": user.trust_score,
                 "isVerified": user.is_verified,
                 "onlineStatus": user.online_status,
-                "skills": list(user.skills.values()) if hasattr(user, 'skills') else [],
-                "objects": list(user.objects.values()) if hasattr(user, 'objects') else [],
+                "pulses": pulses_data, # Sincronizăm lista unificată
             }
         }, status=200)
 
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON format"}, status=400)
-    except ValidationError as e:
-        return JsonResponse({"error": e.message_dict}, status=400)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
@@ -362,6 +355,16 @@ def upload_profile_picture(request):
     user.profile_picture = file
     user.save()
 
+    pulses = Pulse.objects.filter(user=user).prefetch_related('images')
+    pulses_data = [
+        {
+            "id": p.id,
+            "title": p.title,
+            "pulseType": p.pulse_type,
+            "images": [request.build_absolute_uri(img.image.url) for img in p.images.all()],
+        } for p in pulses
+    ]
+
     return JsonResponse({
         "user": {
             "id": user.id,
@@ -378,8 +381,7 @@ def upload_profile_picture(request):
                 "trustScore": user.trust_score,
                 "isVerified": user.is_verified,
                 "onlineStatus": user.online_status,
-                "skills": list(user.skills.values()) if hasattr(user, 'skills') else [],
-                "objects": list(user.objects.values()) if hasattr(user, 'objects') else [],
+                "pulses": pulses_data,
         }
     })
 
@@ -411,60 +413,37 @@ def delete_profile_picture(request):
         }
     })
 
-#adauga skill in profile page
-@login_required
-@require_http_methods(["POST"])
-@csrf_protect
-def add_skill(request):
-    try:
-        data = json.loads(request.body)
 
-        skill = Skill.objects.create(
+@login_required
+@require_POST
+@csrf_protect
+def add_pulse(request):
+    try:
+        data = request.POST
+
+        pulse = Pulse.objects.create(
             user=request.user,
-            name=data.get('name'),
-            proficiency_level=data.get('level', 'beginner'),
-            years_of_experience=data.get('years_of_experience', 0)
+            title=data.get('title'),
+            description=data.get('description', ''),
+            category=data.get('category', ''),
+            pulse_type=data.get('pulse_type'),  # 'servicii' sau 'obiecte'
+            price=data.get('price', 0),
+            currencyType=data.get('currencyType', 'RON'),
+            phone_number=data.get('phone_number', ''),
+            is_available=data.get('is_available', 'true').lower() == 'true'
         )
+
+        images = request.FILES.getlist('images')
+        for img in images:
+            PulseImage.objects.create(pulse=pulse, image=img)
 
         return JsonResponse({
             "success": True,
-            "skill": {
-                "id": skill.id,
-                "name": skill.name,
-                "proficiency_level": skill.proficiency_level,
-                "category": skill.category,
-                "years_of_experience": skill.years_of_experience,
-                "added_at": skill.added_at.strftime("%Y-%m-%d %H:%M:%S") if skill.added_at else None
-            }
-        }, status=201)
-
-    except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)}, status=400)
-
-#adauga obiect in profile page
-@login_required
-@require_http_methods(["POST"])
-@csrf_protect
-def add_object(request):
-    try:
-        data = json.loads(request.body)
-
-        obj = UserObject.objects.create(
-            owner=request.user,
-            name=data.get('name'),
-            price_per_day=data.get('price', 0),
-            is_available=data.get('available', True),
-        )
-
-        return JsonResponse({
-            "success": True,
-            "object": {
-                "id": obj.id,
-                "name": obj.name,
-                "description": obj.description,
-                "price_per_day": float(obj.price_per_day),
-                "isAvailable": obj.is_available,
-                "created_at": obj.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            "pulse": {
+                "id": pulse.id,
+                "title": pulse.title,
+                "pulseType": pulse.pulse_type,
+                "images": [request.build_absolute_uri(i.image.url) for i in pulse.images.all()]
             }
         }, status=201)
 
@@ -472,106 +451,44 @@ def add_object(request):
         return JsonResponse({"success": False, "error": str(e)}, status=400)
 
 @login_required
-def remove_skill(request, skill_id):
-    if request.method != "DELETE":
-        return JsonResponse({"success": False, "error": "Invalid method"}, status=405)
-
+@require_http_methods(["DELETE"])
+def remove_pulse(request, pulse_id):
     try:
-        skill = Skill.objects.get(id=skill_id, user=request.user)
-        skill.delete()
-
+        pulse = Pulse.objects.get(id=pulse_id, user=request.user)
+        pulse.delete()
         return JsonResponse({"success": True})
+    except Pulse.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Pulsul nu a fost găsit"}, status=404)
 
-    except Skill.DoesNotExist:
-        return JsonResponse(
-            {"success": False, "error": "Skill not found"},
-            status=404
-        )
-    except Exception as e:
-        return JsonResponse(
-            {"success": False, "error": str(e)},
-            status=400
-        )
-
-@login_required
-def remove_object(request, object_id):
-    if request.method != "DELETE":
-        return JsonResponse({"success": False, "error": "Invalid method"}, status=405)
-
-    try:
-        # We identify the object by ID and ensure it belongs to the logged-in user
-        obj = UserObject.objects.get(id=object_id, owner=request.user)
-        obj.delete()
-
-        return JsonResponse({"success": True})
-
-    except UserObject.DoesNotExist:
-        return JsonResponse(
-            {"success": False, "error": "Object not found"},
-            status=404
-        )
-    except Exception as e:
-        # If this triggers, check your console to see the specific error
-        return JsonResponse(
-            {"success": False, "error": str(e)},
-            status=400
-        )
-
-
-# Searching and relathionships views
 
 @csrf_protect
 @login_required
 @require_http_methods(["GET"])
 def get_pulses(request):
-
-    page_number = request.GET.get('page')
+    page_number = request.GET.get('page', 1)
     per_page = 15
 
     try:
-        skills = Skill.objects.select_related("user").all()
-        user_objects = UserObject.objects.select_related("owner").all()
+        # Interogăm direct Pulse și aducem pozele și userul dintr-o singură mișcare
+        pulses = Pulse.objects.select_related("user").prefetch_related("images").all().order_by("-created_at")
 
-        combined_list = []
-        # Procesăm Skill-urile
-        for s in skills:
-            combined_list.append({
-                "id": s.id,
-                "type": "skill",
-                "user": s.user.username,
-                # Construim URL-ul complet pentru poza de profil a userului
-                "user_avatar": request.build_absolute_uri(
-                    s.user.profile_picture.url) if s.user.profile_picture else None,
-                "name": s.name,
-                "level": s.proficiency_level,  # <--- Adăugat
-                "timestamp": s.added_at
-            })
-
-        # Procesăm Obiectele
-        for obj in user_objects:
-            combined_list.append({
-                "id": obj.id,
-                "type": "object",
-                "user": obj.owner.username,
-                "user_avatar": request.build_absolute_uri(
-                    obj.owner.profile_picture.url) if obj.owner.profile_picture else None,
-                "name": obj.name,
-                "price": float(obj.price_per_day),
-                "is_available": obj.is_available,
-                "timestamp": obj.created_at
-            })
-
-        # Sortăm cronologic invers (cele mai noi sus)
-        combined_list.sort(key=lambda x: x['timestamp'], reverse=True)
-
-        paginator = Paginator(combined_list, per_page)
+        paginator = Paginator(pulses, per_page)
         page_obj = paginator.get_page(page_number)
 
         final_data = []
-        for item in page_obj:
-            # Formatăm data pentru JSON
-            item['timestamp'] = item['timestamp'].strftime("%Y-%m-%d %H:%M")
-            final_data.append(item)
+        for p in page_obj:
+            final_data.append({
+                "id": p.id,
+                "type": p.pulse_type, # 'servicii' sau 'obiecte'
+                "user": p.user.username,
+                "user_avatar": request.build_absolute_uri(p.user.profile_picture.url) if p.user.profile_picture else None,
+                "name": p.title,
+                "price": float(p.price),
+                "currency": p.currencyType,
+                "timestamp": p.created_at.strftime("%Y-%m-%d %H:%M"),
+                # Luăm prima imagine ca preview
+                "image": request.build_absolute_uri(p.images.first().image.url) if p.images.exists() else None,
+            })
 
         return JsonResponse({
             "success": True,
@@ -582,7 +499,6 @@ def get_pulses(request):
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=400)
 
-User = get_user_model()
 
 @csrf_exempt
 @login_required
@@ -639,14 +555,14 @@ def follow_user(request, user_id):
 
     target = User.objects.get(id=user_id)
 
-    # ❌ If already following → ignore
+    #  If already following → ignore
     if Follow.objects.filter(
         follower=request.user,
         following=target
     ).exists():
         return JsonResponse({"already_following": True})
 
-    # 👑 If target is private → create pending request
+    #  If target is private → create pending request
     if target.private_account:
         PendingFollow.objects.get_or_create(
             requester=request.user,
@@ -655,7 +571,7 @@ def follow_user(request, user_id):
 
         return JsonResponse({"status": "pending_request_created"})
 
-    # ✅ Public account → create follow directly
+    #  Public account → create follow directly
     Follow.objects.get_or_create(
         follower=request.user,
         following=target

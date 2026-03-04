@@ -41,7 +41,9 @@ function Navbar() {
         ? [
             'Home',
             'Profile',
+            'Add Pulse',
             'Logout',
+
         ]
         : ['Home', 'Login'];
 
@@ -55,6 +57,7 @@ function Navbar() {
             Profile: () => navigate('/profile'),
             Login: () => navigate('/login'),
             Home: () => navigate('/'),
+            "Add Pulse": () => navigate('/add-pulse'),
         };
 
         return (
