@@ -14,7 +14,7 @@ const PulseDetails = React.lazy(() => import('./pages/PulseDetails.js'));
 const AddPulses = React.lazy(() => import('./pages/AddPulses.js'));
 const UserProfile = React.lazy(() => import('./pages/UserProfile.js'));
 const DirectChat = React.lazy(() => import('./pages/DirectChat.js'));
-
+const Messages = React.lazy(() => import('./pages/Messages.js'));
 
 const NotificationHandler = ({ currentUser }) => {
     const location = useLocation();
@@ -180,6 +180,7 @@ function App() {
                     <Route path="/direct-chat/:id" element={user ? <DirectChat currentUser={user} /> : <Navigate to="/login" />} />
                     <Route path="/add-pulse" element={<AddPulses/>} />
                     <Route path="pulse/:type/:id" element={<PulseDetails />} />
+                    <Route path="/messages" element={<Messages />} />
                     <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
             </Suspense>
