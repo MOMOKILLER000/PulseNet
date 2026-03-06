@@ -16,7 +16,7 @@ from google.oauth2 import id_token
 from django.contrib.auth.decorators import login_required
 
 from .decorators import api_login_required
-from .models import PendingFollow, Pulse, Friendship, Follow, PulseImage
+from .models import PendingFollow, Pulse, Friendship, Follow, PulseImage, FavoritePulse
 import secrets
 import string
 from django.contrib.auth.hashers import make_password
@@ -511,6 +511,227 @@ def get_pulses(request):
         })
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+
+@csrf_protect
+@login_required
+@require_http_methods(["GET"])
+def get_favorite_pulses(request):
+    page_number = request.GET.get("page", 1)
+    per_page = 15
+
+    try:
+        # Get only pulses that the current user favorited
+        favorite_pulse_ids = FavoritePulse.objects.filter(
+            user=request.user
+        ).values_list("pulse_id", flat=True)
+
+        pulses = (
+            Pulse.objects
+            .filter(id__in=favorite_pulse_ids)
+            .select_related("user")
+            .prefetch_related("images")
+            .order_by("-created_at")
+        )
+
+        paginator = Paginator(pulses, per_page)
+        page_obj = paginator.get_page(page_number)
+
+        final_data = []
+
+        for p in page_obj:
+            final_data.append({
+                "id": p.id,
+                "type": p.pulse_type,
+                "user": p.user.username,
+                "user_avatar": request.build_absolute_uri(p.user.profile_picture.url)
+                if p.user.profile_picture else None,
+                "name": p.title,
+                "price": float(p.price),
+                "currency": p.currencyType,
+                "timestamp": p.created_at.strftime("%Y-%m-%d %H:%M"),
+                "image": request.build_absolute_uri(p.images.first().image.url)
+                if p.images.exists() else None,
+                "is_favorite": True  # ✅ Always true here
+            })
+
+        return JsonResponse({
+            "success": True,
+            "pulses": final_data,
+            "has_next": page_obj.has_next(),
+            "next_page": page_obj.next_page_number() if page_obj.has_next() else None
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "error": str(e)
+        }, status=400)
+
+
+
+@csrf_exempt
+@login_required
+@require_http_methods(["GET"])
+def get_pulse_by_id(request, pulse_id):
+    try:
+        pulse = Pulse.objects.select_related("user").prefetch_related("images").get(id=pulse_id)
+
+        images = [
+            request.build_absolute_uri(img.image.url)
+            for img in pulse.images.all()
+        ]
+
+        data = {
+            "id": pulse.id,
+            "type": pulse.pulse_type,
+            "user": pulse.user.username,
+            "user_id": pulse.user.id,
+            "user_avatar": request.build_absolute_uri(pulse.user.profile_picture.url) if pulse.user.profile_picture else None,
+            "name": pulse.title,
+            "description": pulse.description,
+            "price": float(pulse.price),
+            "currency": pulse.currencyType,
+            "timestamp": pulse.created_at.strftime("%Y-%m-%d %H:%M"),
+            "is_favorite": FavoritePulse.objects.filter(
+                            pulse=pulse,
+                            user=request.user
+                            ).exists(),
+            "images": images,
+        }
+
+        return JsonResponse({
+            "success": True,
+            "pulse": data
+        })
+
+    except Pulse.DoesNotExist:
+        return JsonResponse({
+            "success": False,
+            "error": "Pulse not found"
+        }, status=404)
+
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "error": str(e)
+        }, status=400)
+
+
+
+@login_required
+@require_POST
+def add_pulse_to_favorites(request, pulse_id):
+    try:
+        pulse = Pulse.objects.get(id=pulse_id)
+
+        favorite, created = FavoritePulse.objects.get_or_create(
+            pulse=pulse,
+            user=request.user
+        )
+
+        if not created:
+            return JsonResponse({
+                "success": True,
+                "message": "Already in favorites",
+                "favorited": True
+            })
+
+        return JsonResponse({
+            "success": True,
+            "message": "Added to favorites",
+            "favorited": True
+        })
+
+    except Pulse.DoesNotExist:
+        return JsonResponse({
+            "success": False,
+            "error": "Pulse not found"
+        }, status=404)
+
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "error": str(e)
+        }, status=400)
+
+
+@login_required
+@require_POST
+def add_pulse_to_favorites(request, pulse_id):
+    try:
+        pulse = Pulse.objects.get(id=pulse_id)
+
+        favorite, created = FavoritePulse.objects.get_or_create(
+            pulse=pulse,
+            user=request.user
+        )
+
+        if not created:
+            return JsonResponse({
+                "success": True,
+                "message": "Already in favorites",
+                "favorited": True
+            })
+
+        return JsonResponse({
+            "success": True,
+            "message": "Added to favorites",
+            "favorited": True
+        })
+
+    except Pulse.DoesNotExist:
+        return JsonResponse({
+            "success": False,
+            "error": "Pulse not found"
+        }, status=404)
+
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "error": str(e)
+        }, status=400)
+
+
+
+@login_required
+@require_http_methods(["DELETE"])
+def delete_pulse_from_favorites(request, pulse_id):
+    try:
+        pulse = Pulse.objects.get(id=pulse_id)
+
+        favorite = FavoritePulse.objects.filter(
+            pulse=pulse,
+            user=request.user
+        ).first()
+
+        if not favorite:
+            return JsonResponse({
+                "success": True,
+                "message": "Not in favorites",
+                "favorited": False
+            })
+
+        favorite.delete()
+
+        return JsonResponse({
+            "success": True,
+            "message": "Removed from favorites",
+            "favorited": False
+        })
+
+    except Pulse.DoesNotExist:
+        return JsonResponse({
+            "success": False,
+            "error": "Pulse not found"
+        }, status=404)
+
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "error": str(e)
+        }, status=400)
+
 
 User = get_user_model()
 

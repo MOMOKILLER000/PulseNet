@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import styles from '../styles/registration.module.css';
+import styles from '../../styles/Authentification/registration.module.css';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEye, faEyeSlash } from '@fortawesome/free-regular-svg-icons';
@@ -20,17 +20,10 @@ function getCookie(name) {
     return cookieValue;
 }
 
-const SignUp = () => {
-    const [showPassword1, setShowPassword1] = useState(false);
-    const [showPassword2, setShowPassword2] = useState(false);
-
-    const [firstName, setFirstName] = useState('');
-    const [lastName, setLastName] = useState('');
+const Login = () => {
     const [email, setEmail] = useState('');
-    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-
+    const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
     const csrfFetched = useRef(false);
 
@@ -47,50 +40,38 @@ const SignUp = () => {
                 throw new Error('Failed to fetch CSRF token');
             })
             .then((data) => {
-                // Handle CSRF token data if needed
+                console.log('Fetched CSRF token (response):', data.csrf_token);
             })
             .catch((error) => console.error('Error fetching CSRF token:', error));
     }, []);
 
-
-    const togglePasswordVisibility = (passwordId) => {
-        if (passwordId === 'password1') {
-            setShowPassword1(!showPassword1);
-        } else {
-            setShowPassword2(!showPassword2);
-        }
+    const togglePasswordVisibility = () => {
+        setShowPassword((prev) => !prev);
     };
 
+    const handleSignUpClick = () => {
+        navigate('/Signup');
+    };
+
+    const handleAdminLoginClick = () => {
+        navigate('/adminlogin');
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (password !== confirmPassword) {
-            alert('Passwords do not match');
-            return;
-        }
-        if (password.length < 8) {
-            alert('Password must be at least 8 characters long');
-            return;
-        }
-        if (!email.includes('@')) {
-            alert('Please enter a valid email address');
-            return;
-        }
         const csrfToken = getCookie('csrftoken');
         if (!csrfToken) {
             alert('CSRF token is missing!');
             return;
         }
+
         const userData = {
             email,
             password,
-            first_name: firstName,
-            last_name: lastName,
-            username,
         };
 
         try {
-            const response = await fetch('http://localhost:8000/accounts/signup/', {
+            const response = await fetch('http://localhost:8000/accounts/user_login/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -101,6 +82,8 @@ const SignUp = () => {
             });
 
             if (response.ok) {
+                const data = await response.json();
+                console.log('Login successful:', data);
                 const expirationTime = new Date();
                 expirationTime.setHours(expirationTime.getHours() + 6);
                 localStorage.setItem('auth-token', 'true');
@@ -113,10 +96,11 @@ const SignUp = () => {
                 alert('Error: ' + errorData.message);
             }
         } catch (error) {
-            console.error('Error during sign-up:', error);
-            alert('There was an error during sign-up');
+            console.error('Error during login:', error);
+            alert('There was an error during login');
         }
     };
+
 
     const handleGoogleLogin = async (response) => {
         const googleToken = response.credential; // Tokenul Google
@@ -154,7 +138,7 @@ const SignUp = () => {
 
     return (
         <div>
-            <div className={styles["custom-shape-divider-bottom-1740491939"]}>
+            <div className={styles['custom-shape-divider-bottom-1740491939']}>
                 <svg
                     data-name="Layer 1"
                     xmlns="http://www.w3.org/2000/svg"
@@ -163,70 +147,30 @@ const SignUp = () => {
                 >
                     <path
                         d="M598.97 114.72L0 0 0 120 1200 120 1200 0 598.97 114.72z"
-                        className={styles["shape-fill"]}
+                        className={styles['shape-fill']}
                     ></path>
                 </svg>
             </div>
-
             <img src="/logo.png" className={styles.harta} alt="Map" />
-            <div className={styles["main-container"]}>
+            <div className={styles['main-container']}>
                 <div className={styles.signup}>
-                    <h1 className={styles["signup-titlu"]}>Sign Up for Free</h1>
-
-                    <div className={styles.sus}>
-                        <div className={`${styles.Prenume} ${styles.nume}`}>
-                            <input
-                                type="text"
-                                className={styles.inputs}
-                                required
-                                autoComplete="off"
-                                placeholder="First Name*"
-                                value={firstName}
-                                onChange={(e) => setFirstName(e.target.value)}
-                            />
-                        </div>
-
-                        <div className={`${styles.Nume} ${styles.nume}`}>
-                            <input
-                                type="text"
-                                className={styles.inputs}
-                                required
-                                autoComplete="off"
-                                placeholder="Last Name*"
-                                value={lastName}
-                                onChange={(e) => setLastName(e.target.value)}
-                            />
-                        </div>
-                    </div>
-
-                    <div className={styles.username}>
-                        <input
-                            type="text"
-                            className={styles.inputs}
-                            required
-                            autoComplete="off"
-                            placeholder="UserName*"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                        />
-                    </div>
-
-                    <div className={styles.email}>
+                    <h1 className={styles['signup-titlu']}>Login into your account</h1>
+                    <div className="email">
                         <input
                             type="email"
                             className={styles.inputs}
                             required
                             autoComplete="off"
-                            placeholder="Email*"
+                            placeholder="Email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                         />
                     </div>
 
                     <div className={styles.parole}>
-                        <div className={styles["password-field"]}>
+                        <div className={styles['password-fields']}>
                             <input
-                                type={showPassword1 ? 'text' : 'password'}
+                                type={showPassword ? 'text' : 'password'}
                                 className={styles.inputs}
                                 required
                                 autoComplete="off"
@@ -235,41 +179,20 @@ const SignUp = () => {
                                 onChange={(e) => setPassword(e.target.value)}
                             />
                             <span
-                                className={styles["toggle-password"]}
-                                onClick={() => togglePasswordVisibility('password1')}
+                                className={styles['toggle-passwords']}
+                                onClick={togglePasswordVisibility}
                             >
                 <FontAwesomeIcon
-                    icon={showPassword1 ? faEye : faEyeSlash}
-                    className={styles.customIcon}
-                />
-              </span>
-                        </div>
-                        <div className={styles["password-field"]}>
-                            <input
-                                type={showPassword2 ? 'text' : 'password'}
-                                className={styles.inputs}
-                                required
-                                autoComplete="off"
-                                placeholder="Confirm Pwd"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                            />
-                            <span
-                                className={styles["toggle-password"]}
-                                onClick={() => togglePasswordVisibility('password2')}
-                            >
-                <FontAwesomeIcon
-                    icon={showPassword2 ? faEye : faEyeSlash}
+                    icon={showPassword ? faEye : faEyeSlash}
                     className={styles.customIcon}
                 />
               </span>
                         </div>
                     </div>
 
-                    {/* Submit button */}
-                    <div className={styles["sign-up"]}>
-                        <button className={styles["buton-signup"]} onClick={handleSubmit}>
-                            SIGN UP
+                    <div className="sign-up">
+                        <button className={styles['buton-signup']} onClick={handleSubmit}>
+                            LOGIN
                         </button>
                         <div className={styles.with}>
                             <p>Or with</p>
@@ -288,16 +211,16 @@ const SignUp = () => {
             </div>
 
             <div className={styles.text}>
-                <h1 className={styles["titlu-text"]}>Already have an account?</h1>
-                <div className={styles["welcome-text"]}>
-                    Click below to go to the login page and authenticate yourself.
+                <h1 className={styles['titlu-text']}>New here?</h1>
+                <div className={styles['welcome-text']}>
+                    Click on the sign-up page to create your account and start your journey with us!
                 </div>
-                <button onClick={() => navigate('/Login')} className={styles.ionut}>
-                    Login
+                <button onClick={handleSignUpClick} className={styles.ionut}>
+                    Sign up
                 </button>
             </div>
         </div>
     );
 };
 
-export default SignUp;
+export default Login;

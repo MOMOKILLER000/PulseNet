@@ -23,6 +23,10 @@ urlpatterns = [
     path('add_pulse/', views.add_pulse, name='add_pulse'),
     path('remove_pulse/<int:pulse_id>/', views.remove_pulse, name='remove_pulse'),
     path('get_pulses/', views.get_pulses, name='get_pulses'),
+    path('pulse/<int:pulse_id>/', views.get_pulse_by_id, name='get_pulse_by_id'),
+    path('favorites/', views.get_favorite_pulses, name="get_favorite_pulses"),
+    path('add_to_favorites/<int:pulse_id>/', views.add_pulse_to_favorites, name='add_to_favorites'),
+    path('delete_from_favorites/<int:pulse_id>/', views.delete_pulse_from_favorites, name='delete_from_favorites'),
 
     # Search & Social
     path("search-users/", views.search_users, name="search-users"),

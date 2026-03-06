@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Loading from "../components/Loading";
-import styles from '../styles/directchat.module.css';
-import Navbar from "../components/Navbar"; // 1. Import the styles
+import Loading from "../../components/Loading";
+import styles from '../../styles/User_pages/directchat.module.css';
+import Navbar from "../../components/Navbar"; // 1. Import the styles
 
 function getCookie(name) {
     let cookieValue = null;
