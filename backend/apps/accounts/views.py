@@ -16,7 +16,7 @@ from google.oauth2 import id_token
 from django.contrib.auth.decorators import login_required
 
 from .decorators import api_login_required
-from .models import PendingFollow, Pulse, Friendship, Follow
+from .models import PendingFollow, Pulse, Friendship, Follow, PulseImage
 import secrets
 import string
 from django.contrib.auth.hashers import make_password
@@ -464,12 +464,6 @@ def remove_pulse(request, pulse_id):
         return JsonResponse({"success": True})
     except Pulse.DoesNotExist:
         return JsonResponse({"success": False, "error": "Pulsul nu a fost găsit"}, status=404)
-
-    except UserObject.DoesNotExist:
-        return JsonResponse(
-            {"success": False, "error": "Object not found"},
-            status=404
-        )
     except Exception as e:
         # If this triggers, check your console to see the specific error
         return JsonResponse(

@@ -1,125 +1,71 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: Arial, Helvetica, sans-serif;
-}
+@tailwind components;
 
-/* Background */
 .body {
-    background: #e9e6e6;
-    color: black;
-    margin: 0;
-    padding: 0;
+    @apply min-h-screen bg-gray-50 text-gray-900 py-10;
 }
 
-/* Main container */
-.MainContainer {
-    max-width: 1300px;
-    margin: 0 auto;
-    padding: 20px;
+.mainContainer {
+    @apply max-w-7xl mx-auto px-4 py-8;
 }
 
-.title {
-    font-size: 2.5rem;
-    margin-bottom: 20px;
-    text-align: center;
+/* Titlu centrat */
+.feedTitle {
+    @apply text-3xl font-bold text-center mb-10 text-gray-800 uppercase tracking-wide;
 }
 
-.quote {
-    font-size: 1.3rem;
-    margin-bottom: 20px;
-    text-align: center;
+/* Grid de 4 pe rând pe desktop */
+.pulseGrid {
+    @apply grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6;
 }
 
-.button {
-    padding: 12px 24px;
-    font-size: 16px;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    background-color: #000;
-    color: #fff;
-    transition: 0.3s ease;
+/* Card stil E-commerce */
+.productCard {
+    @apply bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden
+    transition-all duration-300 hover:shadow-xl hover:-translate-y-1 flex flex-col;
 }
 
-.button:hover {
-    opacity: 0.85;
+.imageContainer {
+    @apply relative aspect-square w-full bg-gray-200 overflow-hidden;
 }
 
-
-.divider {
-    width: 100%;
-    border: 0;
-    border-top: 1px solid #ccc;
-    margin: 40px 0;
+.productImage {
+    @apply w-full h-full object-cover transition-transform duration-500 hover:scale-110;
 }
 
-.feedContainer {
-    width: 100%;
-    max-width: 600px; /* Lățimea standard pentru un feed de tip Twitter */
-    margin: 0 auto;
+.noImagePlaceholder {
+    @apply flex items-center justify-center h-full text-4xl bg-gray-100;
 }
 
-.tweetCard {
-    display: flex; /* Aliniază stânga (avatar) cu dreapta (conținut) */
-    padding: 15px;
-    border: 1px solid #e1e8ed;
-    border-radius: 12px;
-    background-color: white;
-    margin-bottom: 15px;
-    text-align: left;
+.contentWrapper {
+    @apply p-4 flex flex-col flex-grow;
 }
 
-.leftSide {
-    margin-right: 12px;
+.productTitle {
+    @apply text-lg font-semibold text-gray-800 truncate mb-1;
 }
 
-.avatar {
-    width: 48px;
-    height: 48px;
-    background-color: #1da1f2;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden; /* Important pentru a tăia colțurile imaginii */
+.postDate {
+    @apply text-xs text-gray-500 mb-3 flex items-center;
 }
 
-.avatarImage {
-    width: 100%;
-    height: 100%;
-    object-fit: cover; /* Previne deformarea pozei */
+.priceContainer {
+    @apply mt-auto pt-3 border-t border-gray-50 flex justify-between items-baseline;
 }
 
-.avatarInitial {
-    color: white;
-    font-weight: bold;
-    font-size: 1.2rem;
+.priceLabel {
+    @apply text-xl font-bold text-blue-600;
 }
 
-.badge, .priceBadge {
-    display: block;
-    font-size: 0.85rem;
-    margin-top: 4px;
-    color: #536471;
-    font-weight: 500;
+.currencyLabel {
+    @apply text-sm font-medium text-blue-500 ml-1;
 }
 
-.priceBadge {
-    color: #00ba7c; /* Un verde pentru preț */
+.typeBadge {
+    @apply absolute top-2 right-2 px-2 py-1 bg-white/90 backdrop-blur-sm
+    text-[10px] font-bold uppercase rounded-md shadow-sm;
 }
 
-.tweetCard {
-    display: flex;
-    padding: 12px 16px;
-    border: 1px solid #eff3f4;
-    background-color: #ffffff;
-    border-radius: 16px;
-    margin-bottom: 12px;
-    transition: 0.2s;
-}
-
-.tweetCard:hover {
-    background-color: #f7f7f7;
+.loadMoreBtn {
+    @apply mt-12 mx-auto block px-8 py-3 bg-gray-900 text-white rounded-full
+    font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50;
 }
