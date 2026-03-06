@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import styles from '../styles/Components/navbar.module.css';
+import { FaHeart } from "react-icons/fa";
 
 // Helper to get CSRF token for POST requests
 function getCookie(name) {
@@ -214,17 +215,56 @@ function Navbar() {
 
                 {/* --- INSTA-STYLE DM BUTTON --- */}
                 {isAuthenticated && (
-                    <div
-                        className={`${styles.dmButton} ${location.pathname.startsWith('/chat') ? styles.activeDm : ''}`}
-                        onClick={() => navigate('/messages')}
-                    >
-                        <svg aria-label="Direct Messaging" color="currentColor" fill="currentColor" height="24" role="img" viewBox="0 0 24 24" width="24">
-                            <line fill="none" stroke="currentColor" strokeLinejoin="round" strokeWidth="2" x1="22" x2="9.218" y1="3" y2="10.083"></line>
-                            <polygon fill="none" points="11.698 20.334 22 3.001 2 3.001 9.218 10.084 11.698 20.334" stroke="currentColor" strokeLinejoin="round" strokeWidth="2"></polygon>
-                        </svg>
-                        {unreadCount > 0 && (
-                            <span className={styles.badge}>{unreadCount}</span>
-                        )}
+                    <div className={styles.iconButtonsContainer}>
+
+                        {/* DM BUTTON */}
+                        <div
+                            className={`${styles.dmButton} ${
+                                location.pathname.startsWith('/chat') ? styles.activeDm : ''
+                            }`}
+                            onClick={() => navigate('/messages')}
+                        >
+                            <svg
+                                aria-label="Direct Messaging"
+                                color="currentColor"
+                                fill="currentColor"
+                                height="24"
+                                role="img"
+                                viewBox="0 0 24 24"
+                                width="24"
+                            >
+                                <line
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    x1="22"
+                                    x2="9.218"
+                                    y1="3"
+                                    y2="10.083"
+                                ></line>
+                                <polygon
+                                    fill="none"
+                                    points="11.698 20.334 22 3.001 2 3.001 9.218 10.084 11.698 20.334"
+                                    stroke="currentColor"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                ></polygon>
+                            </svg>
+
+                            {unreadCount > 0 && (
+                                <span className={styles.badge}>{unreadCount}</span>
+                            )}
+                        </div>
+
+                        {/* ❤️ FAVORITES BUTTON */}
+                        <div
+                            className={styles.favoriteNavButton}
+                            onClick={() => navigate('/favorites')}
+                        >
+                            <FaHeart className={styles.heartIcon} />
+                        </div>
+
                     </div>
                 )}
             </div>

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import styles from "../styles/messages.module.css";
-import Navbar from "../components/Navbar";
+import styles from "../../styles/User_pages/messages.module.css";
+import Navbar from "../../components/Navbar";
+import Loading from "../../components/Loading";
+import {useNavigate} from "react-router-dom";
 
 const Messages = ({ currentUser }) => {
     const [conversations, setConversations] = useState([]);
@@ -8,7 +10,7 @@ const Messages = ({ currentUser }) => {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState("");
     const [loading, setLoading] = useState(true);
-
+    const navigate = useNavigate();
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     const socketRef = useRef(null);
@@ -102,7 +104,7 @@ const Messages = ({ currentUser }) => {
     };
 
     if (loading) {
-        return <div className={styles.loader}>Loading...</div>;
+        return <Loading />;
     }
 
     return (
@@ -139,7 +141,14 @@ const Messages = ({ currentUser }) => {
                             </div>
 
                             <div className={styles.sidebarHeader}>
-                                <h2>{currentUser?.username || "Messages"}</h2>
+                                <h2>Messages</h2>
+
+                                <button
+                                    className={styles.followRequestsBtn}
+                                    onClick={() => navigate("/follow-requests")}
+                                >
+                                    Follow Requests
+                                </button>
                             </div>
 
                             <div className={styles.convoList}>

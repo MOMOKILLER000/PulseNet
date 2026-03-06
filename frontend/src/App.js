@@ -2,19 +2,20 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { toast, Toaster } from 'react-hot-toast';
 import Loading from './components/Loading';
+import FavoritePulses from "./pages/User_pages/FavoritePulses";
 
 // Lazy loaded pages
 const Index = React.lazy(() => import('./pages/Index.js'));
-const SignUp = React.lazy(() => import('./pages/SignUp.js'));
-const Login = React.lazy(() => import('./pages/Login.js'));
-const Profile = React.lazy(() => import('./pages/Profile.js'));
+const SignUp = React.lazy(() => import('./pages/Authentification/SignUp.js'));
+const Login = React.lazy(() => import('./pages/Authentification/Login.js'));
+const Profile = React.lazy(() => import('./pages/User_pages/Profile.js'));
 const SearchUsers = React.lazy(() => import('./pages/SearchUsers.js'));
-const FollowRequests = React.lazy(() => import('./pages/FollowRequests.js'));
-const PulseDetails = React.lazy(() => import('./pages/PulseDetails.js'));
-const AddPulses = React.lazy(() => import('./pages/AddPulses.js'));
+const FollowRequests = React.lazy(() => import('./pages/User_pages/FollowRequests.js'));
+const PulseDetails = React.lazy(() => import('./pages/Pulses_pages/PulseDetails.js'));
+const AddPulses = React.lazy(() => import('./pages/Pulses_pages/AddPulses.js'));
 const UserProfile = React.lazy(() => import('./pages/UserProfile.js'));
-const DirectChat = React.lazy(() => import('./pages/DirectChat.js'));
-const Messages = React.lazy(() => import('./pages/Messages.js'));
+const DirectChat = React.lazy(() => import('./pages/User_pages/DirectChat.js'));
+const Messages = React.lazy(() => import('./pages/User_pages/Messages.js'));
 
 const NotificationHandler = ({ currentUser }) => {
     const location = useLocation();
@@ -181,6 +182,7 @@ function App() {
                     <Route path="/add-pulse" element={<AddPulses/>} />
                     <Route path="pulse/:type/:id" element={<PulseDetails />} />
                     <Route path="/messages" element={<Messages />} />
+                    <Route path="/favorites" element={<FavoritePulses />} />
                     <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
             </Suspense>

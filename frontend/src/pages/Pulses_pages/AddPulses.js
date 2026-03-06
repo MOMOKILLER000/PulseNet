@@ -1,6 +1,6 @@
 import { useState } from "react";
-import styles from '../styles/addpulses.module.css';
-import Navbar from "../components/Navbar";
+import styles from '../../styles/Pulses_pages/addpulses.module.css';
+import Navbar from "../../components/Navbar";
 
 function getCookie(name) {
     let cookieValue = null;

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import Navbar from "../components/Navbar";
-import styles from "../styles/profile.module.css";
+import styles from "../styles/User_pages/profile.module.css";
 import Loading from "../components/Loading";
 import {useParams} from "react-router-dom";
 import { useNavigate } from 'react-router-dom';

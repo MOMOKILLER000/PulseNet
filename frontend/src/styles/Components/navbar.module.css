@@ -68,6 +68,40 @@
 }
 
 /* --- THE COOL DM BUTTON --- */
+.iconButtonsContainer {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* Heart button in navbar */
+.favoriteNavButton {
+    position: relative;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border-radius: 50%;
+    margin-bottom: 2px;
+    transition: all 0.2s ease;
+    color: #ef4444;
+}
+
+.favoriteNavButton:hover {
+    background: rgba(239, 68, 68, 0.1);
+    transform: scale(1.1);
+}
+
+.heartIcon {
+    font-size: 22px;
+    transition: transform 0.2s ease;
+}
+
+.favoriteNavButton:hover .heartIcon {
+    transform: scale(1.15);
+}
+
 .dmButton {
     position: relative;
     cursor: pointer;
