@@ -19,19 +19,14 @@ function formatLocation(location) {
 }
 
 function getLocationCoords(location) {
-    // default coords (lon, lat)
-    const defaultCoords = [27.5766, 47.1585];
-
-    if (!location) return defaultCoords;
+    if (!location) return [27.5766, 47.1585];
     if (Array.isArray(location)) return location;
     if (location.coordinates) return location.coordinates;
-    return defaultCoords;
+    return [27.5766, 47.1585];
 }
 
 function getCookie(name) {
     let cookieValue = null;
-
-    if (typeof document === "undefined") return null;
 
     if (document.cookie && document.cookie !== "") {
         const cookies = document.cookie.split(";");
@@ -51,26 +46,6 @@ function getCookie(name) {
     return cookieValue;
 }
 
-/** Try to extract the underlying maplibre/map instance from various wrapper shapes */
-function getMapInstance(candidate) {
-    if (!candidate) return null;
-
-    // wrapper exposes getMap()
-    if (typeof candidate.getMap === "function") {
-        try {
-            return candidate.getMap();
-        } catch (e) {
-            // ignore
-        }
-    }
-
-    // wrapper might expose a property with the instance
-    if (candidate.mapInstance) return candidate.mapInstance;
-    if (candidate.map) return candidate.map;
-    // maybe the ref is already the actual instance
-    return typeof candidate.resize === "function" ? candidate : null;
-}
-
 export default function PulseDetails() {
     const { type, id } = useParams();
     const navigate = useNavigate();
@@ -80,7 +55,6 @@ export default function PulseDetails() {
     const [error, setError] = useState("");
     const [index, setIndex] = useState(0);
     const [favAnim, setFavAnim] = useState(false);
-    const mapRef = useRef(null);
 
     useEffect(() => {
         let mounted = true;
@@ -110,74 +84,13 @@ export default function PulseDetails() {
         return () => (mounted = false);
     }, [id]);
 
-    // When pulse/coords change, try to resize & recenter the actual map instance.
-    useEffect(() => {
-        if (!pulse) return;
+    const images = useMemo(
+        () => (pulse && pulse.images ? pulse.images : []),
+        [pulse]
+    );
 
-        const coords = getLocationCoords(pulse.location);
-
-        let mounted = true;
-
-        const ensureMapReady = async () => {
-            // Small initial delay to allow DOM/CSS layout
-            await new Promise((r) => setTimeout(r, 250));
-
-            let mapInst = getMapInstance(mapRef.current);
-
-            // Poll for the instance (some wrappers initialize it slightly later)
-            const start = Date.now();
-            const timeout = 2000; // ms
-            while (!mapInst && Date.now() - start < timeout && mounted) {
-                await new Promise((r) => setTimeout(r, 150));
-                mapInst = getMapInstance(mapRef.current);
-            }
-
-            if (!mounted) return;
-
-            if (mapInst) {
-                try {
-                    // Resize and recenter/redraw the map
-                    if (typeof mapInst.resize === "function") mapInst.resize();
-                    if (typeof mapInst.setCenter === "function")
-                        mapInst.setCenter([coords[0], coords[1]]);
-                    else if (typeof mapInst.flyTo === "function")
-                        mapInst.flyTo({ center: [coords[0], coords[1]] });
-
-                    if (typeof mapInst.setZoom === "function") mapInst.setZoom(16);
-                } catch (err) {
-                    // final fallback
-                    window.dispatchEvent(new Event("resize"));
-                }
-            } else {
-                // If we couldn't detect an instance, force a resize event
-                window.dispatchEvent(new Event("resize"));
-            }
-        };
-
-        ensureMapReady();
-
-        return () => {
-            mounted = false;
-        };
-    }, [pulse]);
-
-    // Another generic resize pass for when the page first mounts (helps in some layouts)
-    useEffect(() => {
-        const t = setTimeout(() => window.dispatchEvent(new Event("resize")), 500);
-        return () => clearTimeout(t);
-    }, []);
-
-    const images = useMemo(() => (pulse && pulse.images ? pulse.images : []), [pulse]);
-
-    // guard navigation when images array is empty
-    const next = () => {
-        if (!images.length) return;
-        setIndex((i) => (i + 1) % images.length);
-    };
-    const prev = () => {
-        if (!images.length) return;
-        setIndex((i) => (i - 1 + images.length) % images.length);
-    };
+    const next = () => setIndex((i) => (i + 1) % images.length);
+    const prev = () => setIndex((i) => (i - 1 + images.length) % images.length);
 
     const handleFavorite = async () => {
         setFavAnim(true);
@@ -256,8 +169,6 @@ export default function PulseDetails() {
     }
 
     if (!pulse) return null;
-
-    const coords = getLocationCoords(pulse.location);
 
     const isService = type === "servicii";
 
@@ -344,8 +255,13 @@ export default function PulseDetails() {
                                                 <img
                                                     key={i}
                                                     src={img}
-                                                    onClick={() => setIndex(i)}
-                                                    className={`${styles.thumb} ${i === index ? styles.activeThumb : ""}`}
+                                                    onClick={() =>
+                                                        setIndex(i)
+                                                    }
+                                                    className={`${styles.thumb} ${i === index
+                                                        ? styles.activeThumb
+                                                        : ""
+                                                        }`}
                                                     alt=""
                                                 />
                                             ))}
@@ -396,7 +312,9 @@ export default function PulseDetails() {
                                             className={styles.contactBtn}
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                navigate(`/direct-chat/${pulse.user_id}`);
+                                                navigate(
+                                                    `/direct-chat/${pulse.user_id}`
+                                                );
                                             }}
                                         >
                                             <MessageSquare size={16} /> Contact
@@ -404,28 +322,38 @@ export default function PulseDetails() {
 
                                         <button
                                             onClick={() => {
-                                                pulse.is_favorite ? delete_favorite() : handleFavorite();
+                                                pulse.is_favorite
+                                                    ? delete_favorite()
+                                                    : handleFavorite();
                                             }}
                                             className={`
-                                                ${styles.favoriteBtn}
-                                                ${pulse.is_favorite ? styles.favoriteActive : styles.favoriteInactive}
-                                                ${favAnim ? styles.favActive : ""}
-                                            `}
+                                            ${styles.favoriteBtn}
+                                            ${pulse.is_favorite
+                                                    ? styles.favoriteActive
+                                                    : styles.favoriteInactive
+                                                }
+                                            ${favAnim ? styles.favActive : ""}
+                                        `}
                                         >
                                             <Heart
                                                 size={16}
-                                                fill={pulse.is_favorite ? "currentColor" : "none"}
+                                                fill={
+                                                    pulse.is_favorite
+                                                        ? "currentColor"
+                                                        : "none"
+                                                }
                                             />
 
-                                            {pulse.is_favorite ? "Favorited" : "Favorite"}
+                                            {pulse.is_favorite
+                                                ? "Favorited"
+                                                : "Favorite"}
                                         </button>
                                     </div>
 
-                                    <button
-                                        className={styles.actionBtn}
-                                        onClick={() => { navigate(`/transaction/${pulse.id}`); }}
-                                    >
-                                        {isService ? "Book Service" : "Buy Item"}
+                                    <button className={styles.actionBtn}>
+                                        {isService
+                                            ? "Book Service"
+                                            : "Buy Item"}
                                     </button>
                                 </div>
                             </motion.aside>
@@ -437,32 +365,16 @@ export default function PulseDetails() {
                                 transition={{ delay: 0.1 }}
                                 className={styles.mapContainer}
                             >
-                                {/* Inline fallback height helps if your CSS isn't giving the map a height */}
-                                <div
-                                    className={styles.mapWrapper}
-                                    style={{ minHeight: 280, height: 320 }}
-                                >
-                                    {/* key forces the Map to remount when coords/pulse.id changes */}
+                                <div className={styles.mapWrapper}>
                                     <Map
-                                        key={`${coords[0]}-${coords[1]}-${pulse.id}`}
-                                        ref={mapRef}
-                                        center={coords}
+                                        center={getLocationCoords(pulse.location)}
                                         zoom={16}
                                     >
-                                        <MapMarker longitude={coords[0]} latitude={coords[1]}>
-                                            <MarkerContent>
-                                                <div
-                                                    style={{
-                                                        width: "22px",
-                                                        height: "22px",
-                                                        backgroundColor: "#ff3b30",
-                                                        borderRadius: "50% 50% 50% 0",
-                                                        transform: "translate(-50%, -100%) rotate(-45deg)",
-                                                        border: "2px solid white",
-                                                        boxShadow: "0 2px 6px rgba(0,0,0,0.4)"
-                                                    }}
-                                                />
-                                            </MarkerContent>
+                                        <MapMarker
+                                            longitude={getLocationCoords(pulse.location)[0]}
+                                            latitude={getLocationCoords(pulse.location)[1]}
+                                        >
+                                            <MarkerContent />
                                         </MapMarker>
                                     </Map>
                                 </div>

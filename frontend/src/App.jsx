@@ -4,8 +4,9 @@ import { toast, Toaster } from 'react-hot-toast';
 import Loading from './components/Loading';
 import FavoritePulses from "./pages/User_pages/FavoritePulses";
 
+
 // Lazy loaded pages
-const Index = React.lazy(() => import('./pages'));
+const Index = React.lazy(() => import('./pages/Pulses_pages/Index'));
 const SignUp = React.lazy(() => import('./pages/Authentification/SignUp.jsx'));
 const Login = React.lazy(() => import('./pages/Authentification/Login.jsx'));
 const Profile = React.lazy(() => import('./pages/User_pages/Profile.jsx'));
@@ -16,6 +17,7 @@ const AddPulses = React.lazy(() => import('./pages/Pulses_pages/AddPulses.jsx'))
 const UserProfile = React.lazy(() => import('./pages/UserProfile.jsx'));
 const DirectChat = React.lazy(() => import('./pages/User_pages/DirectChat.jsx'));
 const Messages = React.lazy(() => import('./pages/User_pages/Messages.jsx'));
+const PulseTransaction = React.lazy(() => import('./pages/Pulses_pages/PulseTransaction.jsx'));
 
 const NotificationHandler = ({ currentUser }) => {
     const location = useLocation();
@@ -181,6 +183,7 @@ function App() {
                     <Route path="/direct-chat/:id" element={user ? <DirectChat currentUser={user} /> : <Navigate to="/login" />} />
                     <Route path="/add-pulse" element={<AddPulses/>} />
                     <Route path="pulse/:type/:id" element={<PulseDetails />} />
+                    <Route path="/transaction/:pulseId" element={<PulseTransaction />} />
                     <Route path="/messages" element={<Messages />} />
                     <Route path="/favorites" element={<FavoritePulses />} />
                     <Route path="*" element={<Navigate to="/" />} />

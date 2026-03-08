@@ -69,3 +69,11 @@
     @apply mt-12 mx-auto block px-8 py-3 bg-gray-900 text-white rounded-full
     font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50;
 }
+
+.mapContainer {
+    @apply w-full h-[450px] mb-12 rounded-xl overflow-hidden border border-gray-200 shadow-sm;
+}
+
+.userName {
+    @apply text-sm text-gray-500 font-medium;
+}

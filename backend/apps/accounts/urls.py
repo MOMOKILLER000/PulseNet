@@ -22,7 +22,8 @@ urlpatterns = [
     # --- UNIFIED PULSE SYSTEM ---
     path('add_pulse/', views.add_pulse, name='add_pulse'),
     path('remove_pulse/<int:pulse_id>/', views.remove_pulse, name='remove_pulse'),
-    path('get_pulses/', views.get_pulses, name='get_pulses'),
+    path('get_latest_pulses/', views.get_latest_pulses, name='get_latest_pulses'),
+    path("get_nearest_pulses/", views.get_nearest_pulses, name="get_nearest_pulses"),
     path('pulse/<int:pulse_id>/', views.get_pulse_by_id, name='get_pulse_by_id'),
     path('favorites/', views.get_favorite_pulses, name="get_favorite_pulses"),
     path('add_to_favorites/<int:pulse_id>/', views.add_pulse_to_favorites, name='add_to_favorites'),
