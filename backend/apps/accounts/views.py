@@ -489,40 +489,78 @@ def remove_pulse(request, pulse_id):
 @csrf_protect
 @login_required
 @require_http_methods(["GET"])
-def get_pulses(request):
+def get_latest_pulses(request):
     page_number = request.GET.get('page', 1)
     per_page = 15
 
-    try:
-        # Interogăm direct Pulse și aducem pozele și userul dintr-o singură mișcare
-        pulses = Pulse.objects.select_related("user").prefetch_related("images").all().order_by("-created_at")
+    pulses = Pulse.objects.select_related("user").prefetch_related("images").all().order_by("-created_at")
 
-        paginator = Paginator(pulses, per_page)
-        page_obj = paginator.get_page(page_number)
+    paginator = Paginator(pulses, per_page)
+    page_obj = paginator.get_page(page_number)
 
-        final_data = []
-        for p in page_obj:
-            final_data.append({
-                "id": p.id,
-                "type": p.pulse_type, # 'servicii' sau 'obiecte'
-                "user": p.user.username,
-                "user_avatar": request.build_absolute_uri(p.user.profile_picture.url) if p.user.profile_picture else None,
-                "name": p.title,
-                "price": float(p.price),
-                "currency": p.currencyType,
-                "timestamp": p.created_at.strftime("%Y-%m-%d %H:%M"),
-                # Luăm prima imagine ca preview
-                "image": request.build_absolute_uri(p.images.first().image.url) if p.images.exists() else None,
-            })
-
-        return JsonResponse({
-            "success": True,
-            "pulses": final_data,
-            "has_next": page_obj.has_next(),
-            "next_page": page_obj.next_page_number() if page_obj.has_next() else None
+    final_data = []
+    for p in page_obj:
+        final_data.append({
+            "id": p.id,
+            "type": p.pulse_type,
+            "user": p.user.username,
+            "user_avatar": request.build_absolute_uri(p.user.profile_picture.url) if p.user.profile_picture else None,
+            "name": p.title,
+            "price": float(p.price),
+            "currency": p.currencyType,
+            "timestamp": p.created_at.strftime("%Y-%m-%d %H:%M"),
+            "image": request.build_absolute_uri(p.images.first().image.url) if p.images.exists() else None,
         })
-    except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+    return JsonResponse({
+        "success": True,
+        "pulses": final_data,
+        "has_next": page_obj.has_next(),
+    })
+
+@csrf_protect
+@login_required
+@require_http_methods(["GET"])
+def get_nearest_pulses(request):
+
+    lat = request.GET.get("lat")
+    lng = request.GET.get("lng")
+
+    if not lat or not lng:
+        return JsonResponse({"success": False, "error": "Location required"}, status=400)
+
+    user_location = Point(float(lng), float(lat), srid=4326)
+
+    pulses = (
+        Pulse.objects
+        .filter(location__isnull=False)
+        .select_related("user")
+        .prefetch_related("images")
+        .annotate(distance=Distance("location", user_location))
+        .order_by("distance")[:10]
+    )
+
+    data = []
+
+    for p in pulses:
+        data.append({
+            "id": p.id,
+            "type": p.pulse_type,
+            "user": p.user.username,
+            "name": p.title,
+            "price": float(p.price),
+            "currency": p.currencyType,
+            "timestamp": p.created_at.strftime("%Y-%m-%d %H:%M"),
+            "distance": round(p.distance.km, 2),
+            "lat": p.location.y,
+            "lng": p.location.x,
+            "image": request.build_absolute_uri(p.images.first().image.url) if p.images.exists() else None,
+        })
+
+    return JsonResponse({
+        "success": True,
+        "pulses": data
+    })
 
 
 @csrf_protect

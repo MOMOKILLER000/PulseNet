@@ -1,0 +1,197 @@
+/* pulseTransaction.module.css */
+
+/* Page wrapper */
+.body {
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    background-color: #f5f6fa;
+    padding-bottom: 40px;
+}
+
+/* Main container */
+.mainContainer {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Page title */
+.title {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+/* Carousel */
+.carousel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.mainImage {
+    width: 256px;
+    height: 256px;
+    object-fit: cover;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
+.noImage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #ddd;
+    color: #666;
+    font-weight: bold;
+}
+
+/* Carousel buttons */
+.nav {
+    background: rgba(255,255,255,0.8);
+    border: none;
+    padding: 6px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.nav:hover {
+    background: rgba(255,255,255,1);
+}
+
+/* Details */
+.details {
+    margin-bottom: 20px;
+}
+
+.details p {
+    margin-bottom: 6px;
+    font-size: 0.95rem;
+}
+
+/* Form */
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+}
+
+.field label {
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.field input,
+.field textarea {
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 0.95rem;
+    resize: none;
+}
+
+.field textarea {
+    height: 100px;
+}
+
+/* Confirm button */
+.transactionBtn {
+    padding: 12px 0;
+    font-weight: bold;
+    border-radius: 12px;
+    cursor: pointer;
+    color: white;
+    width: 100%;
+    transition: transform 0.15s, background-color 0.2s;
+}
+
+.transactionBtn:hover {
+    transform: scale(1.03);
+}
+
+.serviceBtn {
+    background-color: #22c55e;
+}
+
+.serviceBtn:hover {
+    background-color: #16a34a;
+}
+
+.objectBtn {
+    background-color: #1d4ed8;
+}
+
+.objectBtn:hover {
+    background-color: #1e40af;
+}
+
+/* Status message */
+.status {
+    margin-top: 10px;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+/* Map */
+.mapWrapper {
+    margin-top: 20px;
+    height: 320px;
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
+.mapMarker {
+    width: 22px;
+    height: 22px;
+    background-color: #ff3b30;
+    border-radius: 50% 50% 50% 0;
+    transform: translate(-50%, -100%) rotate(-45deg);
+    border: 2px solid white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+/* Seller card */
+.sellerCard {
+    margin-top: 20px;
+    background-color: #fff;
+    padding: 12px;
+    border-radius: 12px;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+}
+
+.contactBtn {
+    margin-top: 10px;
+    background: #f3f4f6;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    transition: background 0.2s;
+}
+
+.contactBtn:hover {
+    background: #e5e7eb;
+}
+
+/* Loading and error */
+.loading, .error {
+    text-align: center;
+    margin-top: 20px;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
