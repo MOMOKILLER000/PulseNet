@@ -602,7 +602,7 @@ def get_favorite_pulses(request):
                 "timestamp": p.created_at.strftime("%Y-%m-%d %H:%M"),
                 "image": request.build_absolute_uri(p.images.first().image.url)
                 if p.images.exists() else None,
-                "is_favorite": True  # ✅ Always true here
+                "is_favorite": True
             })
 
         return JsonResponse({
@@ -919,6 +919,20 @@ def follow_user(request, user_id):
         PendingFollow.objects.get_or_create(
             requester=request.user,
             target=target
+        )
+
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"user_notifications_{target.id}",
+            {
+                "type": "send_notification",
+                "notification_type": "follow_request",
+                "sender_id": request.user.id,
+                "sender_name": request.user.username,
+                "content": f"{request.user.username} sent you a follow request",
+            }
         )
 
         return JsonResponse({"status": "pending_request_created"})

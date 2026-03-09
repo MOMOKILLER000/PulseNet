@@ -31,13 +31,14 @@ const NotificationHandler = ({ currentUser }) => {
 
         socket.onmessage = (e) => {
             const data = JSON.parse(e.data);
-            const currentChatPath = `/direct-chat/${data.sender_id}`;
+            const isFollowRequest = data.type === 'follow_request';
+            const targetPath = isFollowRequest ? '/follow-requests' : `/direct-chat/${data.sender_id}`;
 
-            if (location.pathname !== currentChatPath) {
+            if (location.pathname !== targetPath) {
                 toast.custom((t) => (
                     <div
                         onClick={() => {
-                            navigate(currentChatPath);
+                            navigate(targetPath);
                             toast.dismiss(t.id);
                         }}
                         style={{
@@ -117,7 +118,13 @@ const NotificationHandler = ({ currentUser }) => {
             }
         };
 
-        return () => socket.close();
+        return () => {
+            if (socket.readyState === WebSocket.CONNECTING) {
+                socket.onopen = () => socket.close();
+            } else if (socket.readyState === WebSocket.OPEN) {
+                socket.close();
+            }
+        };
     }, [currentUser, location.pathname, navigate]);
 
     return null;
