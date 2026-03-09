@@ -163,3 +163,46 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             "sender_name": event["sender_name"],
             "content": event["content"]
         }))
+
+    async def send_rental_notification(self, event):
+        """This is a new handler for rental proposals."""
+        await self.send(text_data=json.dumps({
+            "type": "new_rental_proposal",
+            "title": event.get("title"),
+            "message": event.get("message"),
+            "pulse_id": event.get("pulse_id"),
+            "rental_id": event.get("rental_id"),
+            "proposed_total": event.get("proposed_total"),
+            "renter_id": event.get("renter_id"),
+            "renter_username": event.get("renter_username"),
+        }))
+
+import json
+from channels.generic.websocket import AsyncWebsocketConsumer
+
+class PulseConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+
+        self.room_group_name = "pulses_feed"
+
+        await self.channel_layer.group_add(
+            self.room_group_name,
+            self.channel_name
+        )
+
+        # 2. Accept the connection
+        await self.accept()
+        print(f"Connection accepted for group: {self.room_group_name}")
+
+    async def disconnect(self, close_code):
+
+        await self.channel_layer.group_discard(
+            self.room_group_name,
+            self.channel_name
+        )
+        print(f"Connection closed with code: {close_code}")
+
+    async def pulse_message(self, event):
+        data = event["data"]
+
+        await self.send(text_data=json.dumps(data))

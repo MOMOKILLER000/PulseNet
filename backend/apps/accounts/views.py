@@ -1,6 +1,8 @@
+from channels.layers import get_channel_layer
 from django.contrib.auth import authenticate
 from django.core.paginator import Paginator
 from django.middleware.csrf import get_token
+from django.utils.dateparse import parse_datetime, parse_date
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie, csrf_protect
 import os
 from django.views.decorators.csrf import csrf_protect
@@ -18,7 +20,7 @@ from django.contrib.gis.geos import Point
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.measure import D
 from .decorators import api_login_required
-from .models import PendingFollow, Pulse, Friendship, Follow, PulseImage, FavoritePulse
+from .models import PendingFollow, Pulse, Friendship, Follow, PulseImage, FavoritePulse, PulseRental
 import secrets
 import string
 from django.contrib.auth.hashers import make_password
@@ -428,7 +430,7 @@ def add_pulse(request):
     try:
         data = request.POST
 
-        #coordonatele de unde a fost facuta postarea
+        # coordonatele de unde a fost facuta postarea
         lat = data.get('lat')
         lng = data.get('lng')
         location_point = None
@@ -451,6 +453,26 @@ def add_pulse(request):
         images = request.FILES.getlist('images')
         for img in images:
             PulseImage.objects.create(pulse=pulse, image=img)
+
+        first_image = pulse.images.first()
+        broadcast_payload = {
+            "id": pulse.id,
+            "type": pulse.pulse_type,
+            "name": pulse.title,
+            "user": request.user.username,
+            "price": float(pulse.price),
+            "currency": pulse.currencyType,
+            "timestamp": pulse.created_at.strftime("%Y-%m-%d %H:%M"),
+            "image": request.build_absolute_uri(first_image.image.url) if first_image else None,
+            "lat": pulse.location.y if pulse.location else None,
+            "lng": pulse.location.x if pulse.location else None,
+        }
+
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "pulses_feed",
+            {"type": "pulse.message", "data": broadcast_payload}
+        )
 
         return JsonResponse({
             "success": True,
@@ -562,6 +584,50 @@ def get_nearest_pulses(request):
         "pulses": data
     })
 
+@csrf_protect
+@login_required
+@require_http_methods(["GET"])
+def get_nearest_pulses(request):
+
+    lat = request.GET.get("lat")
+    lng = request.GET.get("lng")
+
+    if not lat or not lng:
+        return JsonResponse({"success": False, "error": "Location required"}, status=400)
+
+    user_location = Point(float(lng), float(lat), srid=4326)
+
+    pulses = (
+        Pulse.objects
+        .filter(location__isnull=False)
+        .select_related("user")
+        .prefetch_related("images")
+        .annotate(distance=Distance("location", user_location))
+        .order_by("distance")[:10]
+    )
+
+    data = []
+
+    for p in pulses:
+        data.append({
+            "id": p.id,
+            "type": p.pulse_type,
+            "user": p.user.username,
+            "name": p.title,
+            "price": float(p.price),
+            "currency": p.currencyType,
+            "timestamp": p.created_at.strftime("%Y-%m-%d %H:%M"),
+            "distance": round(p.distance.km, 2),
+            "lat": p.location.y,
+            "lng": p.location.x,
+            "image": request.build_absolute_uri(p.images.first().image.url) if p.images.exists() else None,
+        })
+
+    return JsonResponse({
+        "success": True,
+        "pulses": data
+    })
+
 
 @csrf_protect
 @login_required
@@ -625,13 +691,29 @@ def get_favorite_pulses(request):
 @require_http_methods(["GET"])
 def get_pulse_by_id(request, pulse_id):
     try:
-        pulse = Pulse.objects.select_related("user").prefetch_related("images").get(id=pulse_id)
+        pulse = (
+            Pulse.objects
+            .select_related("user")
+            .prefetch_related("images", "rentals")
+            .get(id=pulse_id)
+        )
 
         coords = list(pulse.location.coords) if pulse.location else [27.5766, 47.1585]
 
         images = [
             request.build_absolute_uri(img.image.url)
             for img in pulse.images.all()
+        ]
+
+        # Get reserved (unavailable) periods - return ISO strings for frontend
+        unavailable_ranges = [
+            {
+                "start": rental.start_date.isoformat(),
+                "end": rental.end_date.isoformat(),
+                "status": rental.status,
+                "renter_id": rental.renter_id if hasattr(rental, "renter_id") else None,
+            }
+            for rental in pulse.rentals.filter(status__in=["pending", "confirmed"])
         ]
 
         data = {
@@ -647,10 +729,12 @@ def get_pulse_by_id(request, pulse_id):
             "location": coords,
             "timestamp": pulse.created_at.strftime("%Y-%m-%d %H:%M"),
             "is_favorite": FavoritePulse.objects.filter(
-                            pulse=pulse,
-                            user=request.user
-                            ).exists(),
+                pulse=pulse,
+                user=request.user
+            ).exists(),
             "images": images,
+            "reserved_periods": unavailable_ranges,  # kept for backwards compat
+            "unavailable_ranges": unavailable_ranges,  # new canonical field
         }
 
         return JsonResponse({
@@ -671,6 +755,99 @@ def get_pulse_by_id(request, pulse_id):
         }, status=400)
 
 
+
+
+@login_required
+@csrf_exempt
+def create_pulse_rental(request):
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Invalid request method."}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        pulse_id = data.get("pulse_id")
+        start_date_str = data.get("start_date")
+        end_date_str = data.get("end_date")
+        proposed_price = data.get("proposed_price")
+    except Exception:
+        return JsonResponse({"success": False, "error": "Invalid JSON data."}, status=400)
+
+    if not all([pulse_id, start_date_str, end_date_str, proposed_price]):
+        return JsonResponse({"success": False, "error": "Missing required fields."}, status=400)
+
+    try:
+        pulse = Pulse.objects.get(id=pulse_id)
+    except Pulse.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Pulse not found."}, status=404)
+
+    # Only non-owners can propose
+    if pulse.user == request.user:
+        return JsonResponse({"success": False, "error": "You cannot propose a rental to your own pulse."}, status=403)
+
+    # Parse dates
+    start_date = parse_datetime(start_date_str) or parse_date(start_date_str)
+    end_date = parse_datetime(end_date_str) or parse_date(end_date_str)
+
+    if not start_date or not end_date or start_date > end_date:
+        return JsonResponse({"success": False, "error": "Invalid rental dates."}, status=400)
+
+    # Calculate total days
+    total_days = (end_date - start_date).days + 1
+
+    # Validate price
+    try:
+        proposed_price = float(proposed_price)
+        if proposed_price <= 0:
+            raise ValueError
+    except ValueError:
+        return JsonResponse({"success": False, "error": "Proposed price must be positive."}, status=400)
+
+    proposed_total = proposed_price * total_days
+
+    # Check overlap
+    overlapping = PulseRental.objects.filter(
+        pulse=pulse,
+        start_date__lte=end_date,
+        end_date__gte=start_date,
+    ).exists()
+
+    if overlapping:
+        return JsonResponse({"success": False, "error": "Selected period overlaps with an existing reservation."}, status=400)
+
+    # Create rental proposal
+    rental = PulseRental.objects.create(
+        pulse=pulse,
+        renter=request.user,
+        start_date=start_date,
+        end_date=end_date,
+        total_price=proposed_total,
+        status="pending",
+    )
+
+    # -------------------------------------------------
+    # Send realtime WebSocket notification
+    # -------------------------------------------------
+
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f"user_notifications_{pulse.user.id}",
+        {
+            "type": "send_rental_notification",  # note the new handler
+            "title": "New Rental Proposal",
+            "message": f"{request.user.username} proposed {proposed_total} for {pulse.title}",
+            "pulse_id": pulse.id,
+            "rental_id": rental.id,
+            "proposed_total": proposed_total,
+            "renter_id": request.user.id,
+            "renter_username": request.user.username,
+        }
+    )
+
+    return JsonResponse({
+        "success": True,
+        "rental_id": rental.id,
+        "proposed_total": proposed_total
+    })
 
 @login_required
 @require_POST
@@ -1030,7 +1207,7 @@ def get_follow_requests(request):
 
 
 from django.http import JsonResponse
-from asgiref.sync import sync_to_async
+from asgiref.sync import sync_to_async, async_to_sync
 from django.db.models import Q
 from .models import User, DirectConversation, Friendship, DirectMessage, Group_Message
 
