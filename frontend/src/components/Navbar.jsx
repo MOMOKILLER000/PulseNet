@@ -128,9 +128,9 @@ function Navbar() {
         }
     };
 
-    const openChat = (e, username) => {
+    const openChat = (e, userId) => {
         e.stopPropagation();
-        navigate(`/chat/${username}`);
+        navigate(`/direct-chat/${userId}`);
         setShowDropdown(false);
         setQuery("");
     };
@@ -197,7 +197,7 @@ function Navbar() {
 
                                     <div className={styles.userActions}>
                                         {(u.is_friend || !u.private_account) && (
-                                            <button className={styles.msgBtn} onClick={(e) => openChat(e, u.username)}>
+                                            <button className={styles.msgBtn} onClick={(e) => openChat(e, u.id)}>
                                                 DM
                                             </button>
                                         )}
