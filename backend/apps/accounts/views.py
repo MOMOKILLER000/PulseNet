@@ -602,7 +602,7 @@ def get_best_pulses(request):
     page_number = request.GET.get('page', 1)
     per_page = 15
 
-    pulses = Pulse.objects.select_related("user").prefetch_related("images").all().order_by("popularity_score")
+    pulses = Pulse.objects.select_related("user").prefetch_related("images").all().order_by("-popularity_score")
 
     paginator = Paginator(pulses, per_page)
     page_obj = paginator.get_page(page_number)
