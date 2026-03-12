@@ -314,23 +314,6 @@ export default function PulseDetails() {
     const next = () => { if (images.length) setIndex(i => (i + 1) % images.length); };
     const prev = () => { if (images.length) setIndex(i => (i - 1 + images.length) % images.length); };
 
-    const handleReviewSubmit = (e) => {
-        e.preventDefault();
-        if (userRating === 0 || !commentText.trim()) return;
-
-        const newReview = {
-            id: Date.now(),
-            user: "Tu (Local)",
-            rating: userRating,
-            comment: commentText,
-            timestamp: "Chiar acum"
-        };
-
-        setLocalReviews([newReview, ...localReviews]);
-        setCommentText("");
-        // keep userRating as-is (do not reset) so stars still reflect user's rating
-    };
-
     const handleFavorite = async () => {
         setFavAnim(true);
         try {
@@ -483,7 +466,7 @@ export default function PulseDetails() {
                                             {isSubmittingRating ? "Submitting..." : "Submit Rating"}
                                         </button>
 
-                                        <form onSubmit={handleReviewSubmit} style={{ display: 'flex', gap: '10px', flex: 1 }}>
+                                        <form onSubmit={handlePostComment} style={{ display: 'flex', gap: '10px', flex: 1 }}>
                                             <input
                                                 type="text"
                                                 name="comment"
