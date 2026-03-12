@@ -79,7 +79,8 @@ class Pulse(models.Model):
     visibility_radius = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
+    popularity_score = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_reviews = models.IntegerField(default=0)
     class Meta:
         ordering = ["-created_at"]
 
@@ -124,6 +125,31 @@ class PulseRental(models.Model):
     def __str__(self):
         return f"{self.pulse.title} reserved by {self.renter} ({self.start_date} - {self.end_date})"
 
+class PulseComment(models.Model):
+    pulse = models.ForeignKey(
+        Pulse,
+        on_delete=models.CASCADE,
+    )
+
+    user = models.ForeignKey(
+        "User",
+        on_delete=models.CASCADE,
+        related_name="pulse_comments"
+    )
+
+    content = models.TextField()
+    pub_date = models.DateTimeField(auto_now_add=True)
+
+    def can_delete(self, request_user):
+        return request_user == self.user or request_user.is_superuser
+
+    def __str__(self):
+        return f"{self.user} - {self.pub_date}"
+
+class PulseRating(models.Model):
+    pulse = models.ForeignKey(Pulse,on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    rating = models.PositiveIntegerField(default=10)
 
 class FavoritePulse(models.Model):
     user = models.ForeignKey(
