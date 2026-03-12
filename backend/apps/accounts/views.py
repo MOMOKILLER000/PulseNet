@@ -20,11 +20,13 @@ from django.contrib.gis.geos import Point
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.measure import D
 from .decorators import api_login_required
-from .models import PendingFollow, Pulse, Friendship, Follow, PulseImage, FavoritePulse, PulseRental, Alert, AlertImage
+from .models import PendingFollow, Pulse, Friendship, Follow, PulseImage, FavoritePulse, PulseRental, Alert, AlertImage, \
+    PulseComment, PulseRating
 import secrets
 import string
 from django.contrib.auth.hashers import make_password
-
+from django.db import models
+from decimal import Decimal
 
 def generate_password(length=12):
     alphabet = string.ascii_letters + string.digits + string.punctuation
@@ -528,7 +530,11 @@ def get_latest_pulses(request):
             "user": p.user.username,
             "user_avatar": request.build_absolute_uri(p.user.profile_picture.url) if p.user.profile_picture else None,
             "name": p.title,
+            "description": p.description,
+            "popularity_score": p.popularity_score,
+            "total_reviews": p.total_reviews,
             "price": float(p.price),
+            "pulse_type": p.pulse_type,
             "currency": p.currencyType,
             "timestamp": p.created_at.strftime("%Y-%m-%d %H:%M"),
             "image": request.build_absolute_uri(p.images.first().image.url) if p.images.exists() else None,
@@ -571,6 +577,10 @@ def get_nearest_pulses(request):
             "user": p.user.username,
             "name": p.title,
             "price": float(p.price),
+            "pulse_type": p.pulse_type,
+            "description": p.description,
+            "popularity_score": p.popularity_score,
+            "total_reviews": p.total_reviews,
             "currency": p.currencyType,
             "timestamp": p.created_at.strftime("%Y-%m-%d %H:%M"),
             "distance": round(p.distance.km, 2),
@@ -583,51 +593,43 @@ def get_nearest_pulses(request):
         "success": True,
         "pulses": data
     })
+
 
 @csrf_protect
 @login_required
 @require_http_methods(["GET"])
-def get_nearest_pulses(request):
+def get_best_pulses(request):
+    page_number = request.GET.get('page', 1)
+    per_page = 15
 
-    lat = request.GET.get("lat")
-    lng = request.GET.get("lng")
+    pulses = Pulse.objects.select_related("user").prefetch_related("images").all().order_by("popularity_score")
 
-    if not lat or not lng:
-        return JsonResponse({"success": False, "error": "Location required"}, status=400)
+    paginator = Paginator(pulses, per_page)
+    page_obj = paginator.get_page(page_number)
 
-    user_location = Point(float(lng), float(lat), srid=4326)
-
-    pulses = (
-        Pulse.objects
-        .filter(location__isnull=False)
-        .select_related("user")
-        .prefetch_related("images")
-        .annotate(distance=Distance("location", user_location))
-        .order_by("distance")[:10]
-    )
-
-    data = []
-
-    for p in pulses:
-        data.append({
+    final_data = []
+    for p in page_obj:
+        final_data.append({
             "id": p.id,
             "type": p.pulse_type,
             "user": p.user.username,
+            "user_avatar": request.build_absolute_uri(p.user.profile_picture.url) if p.user.profile_picture else None,
             "name": p.title,
             "price": float(p.price),
+            "pulse_type": p.pulse_type,
+            "description": p.description,
+            "popularity_score": p.popularity_score,
+            "total_reviews": p.total_reviews,
             "currency": p.currencyType,
             "timestamp": p.created_at.strftime("%Y-%m-%d %H:%M"),
-            "distance": round(p.distance.km, 2),
-            "lat": p.location.y,
-            "lng": p.location.x,
             "image": request.build_absolute_uri(p.images.first().image.url) if p.images.exists() else None,
         })
 
     return JsonResponse({
         "success": True,
-        "pulses": data
+        "pulses": final_data,
+        "has_next": page_obj.has_next(),
     })
-
 
 @csrf_protect
 @login_required
@@ -716,6 +718,12 @@ def get_pulse_by_id(request, pulse_id):
             for rental in pulse.rentals.filter(status__in=["pending", "confirmed"])
         ]
 
+        try:
+            user_rating_obj = PulseRating.objects.get(pulse=pulse, user=request.user)
+            user_rating = user_rating_obj.rating
+        except PulseRating.DoesNotExist:
+            user_rating = None
+
         data = {
             "id": pulse.id,
             "type": pulse.pulse_type,
@@ -727,12 +735,13 @@ def get_pulse_by_id(request, pulse_id):
             "price": float(pulse.price),
             "currency": pulse.currencyType,
             "location": coords,
-            "timestamp": pulse.created_at.strftime("%Y-%m-%d %H:%M"),
+            "timestamp": pulse.created_at.strftime("%d %b %Y, %H:%M"),
             "is_favorite": FavoritePulse.objects.filter(
                 pulse=pulse,
                 user=request.user
             ).exists(),
             "images": images,
+            "user_rating": user_rating,
             "reserved_periods": unavailable_ranges,  # kept for backwards compat
             "unavailable_ranges": unavailable_ranges,  # new canonical field
         }
@@ -755,7 +764,129 @@ def get_pulse_by_id(request, pulse_id):
         }, status=400)
 
 
+@login_required
+def get_pulse_comments(request, pulse_id):
+    if request.method == "GET":
+        comments = (
+            PulseComment.objects
+            .filter(pulse_id=pulse_id)
+            .select_related("user")
+            .order_by("-pub_date")
+        )
 
+        data = []
+
+        for comment in comments:
+            data.append({
+                "id": comment.id,
+                "user": comment.user.username,
+                "user_id": comment.user.id,
+                "avatar": request.build_absolute_uri(comment.user.profile_picture.url) if comment.user.profile_picture else None,
+                "content": comment.content,
+                "date": comment.pub_date.strftime("%d %b %Y, %H:%M"),
+                "can_delete": comment.can_delete(request.user),
+            })
+
+        return JsonResponse({
+            "success": True,
+            "comments": data
+        })
+
+
+    elif request.method == "POST":
+        data = json.loads(request.body)
+        content = data.get("content")
+        if not content:
+            return JsonResponse({
+                "success": False,
+                "error": "Content is required"
+            })
+
+        comment = PulseComment.objects.create(
+            pulse_id=pulse_id,
+            user=request.user,
+            content=content
+
+        )
+
+        return JsonResponse({
+            "success": True,
+            "comment": {
+                "id": comment.id,
+                "user": comment.user.username,
+                "user_id": comment.user.id,
+                "avatar": request.build_absolute_uri(
+                    comment.user.profile_picture.url) if comment.user.profile_picture else None,
+                "content": comment.content,
+                "date": comment.pub_date.strftime("%d %b %Y, %H:%M"),
+                "can_delete": comment.can_delete(request.user),
+            }
+        })
+    elif request.method == "DELETE":
+        # get comment_id from query params or body
+
+        comment_id = pulse_id
+        if not comment_id:
+            return JsonResponse({"success": False, "error": "Comment ID required"}, status=400)
+
+        try:
+            comment = PulseComment.objects.get(id=comment_id)
+            if comment.user != request.user:
+                return JsonResponse({"success": False, "error": "Not allowed"}, status=403)
+            comment.delete()
+            return JsonResponse({"success": True, "message": "Comment deleted"})
+        except PulseComment.DoesNotExist:
+            return JsonResponse({"success": False, "error": "Comment not found"}, status=404)
+    else:
+        return JsonResponse({
+            "success": False,
+            "error": "Invalid request method"
+        }, status=405)
+
+
+@login_required
+def add_pulse_rating(request, pulse_id):
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"success": False, "error": "Invalid JSON"}, status=400)
+
+    rating_value = data.get("rating")
+
+    if not rating_value or not (1 <= rating_value <= 10):
+        return JsonResponse({"success": False, "error": "Rating must be between 1 and 10"})
+
+    try:
+        pulse = Pulse.objects.get(id=pulse_id)
+    except Pulse.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Pulse not found"}, status=404)
+
+    # Check if user has already rated
+    rating_obj, created = PulseRating.objects.update_or_create(
+        pulse=pulse,
+        user=request.user,
+        defaults={"rating": rating_value}
+    )
+
+    # Update pulse popularity score and total reviews
+    all_ratings = PulseRating.objects.filter(pulse=pulse)
+    total_reviews = all_ratings.count()
+    popularity_score = all_ratings.aggregate(avg=models.Avg('rating'))['avg'] or 0
+
+    pulse.total_reviews = total_reviews
+    pulse.popularity_score = Decimal(popularity_score).quantize(Decimal('0.01'))
+    pulse.save(update_fields=['total_reviews', 'popularity_score'])
+
+    return JsonResponse({
+        "success": True,
+        "rating": rating_obj.rating,
+        "created": created,
+        "total_reviews": total_reviews,
+        "popularity_score": float(pulse.popularity_score)
+    })
 
 @login_required
 @csrf_exempt
