@@ -3,9 +3,17 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
 from django.db.models import Q
-from .models import Group_Conversation, Group_Message, DirectConversation, DirectMessage, Friendship
+from .models import (
+    Group_Conversation,
+    Group_Message,
+    DirectConversation,
+    DirectMessage,
+    Friendship,
+    Notification,
+)
 
 User = get_user_model()
+
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -35,7 +43,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             other_user = await self._get_other_direct_participant(user, self.conversation)
             if other_user:
                 is_friend = await self._are_friends(user, other_user)
-                is_public = not getattr(other_user, 'private_account', False)
+                is_public = not getattr(other_user, "private_account", False)
                 if not (is_friend or is_public):
                     await self.close(code=4005)
                     return
@@ -44,7 +52,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.accept()
 
     async def disconnect(self, close_code):
-        if hasattr(self, 'room_group_name'):
+        if hasattr(self, "room_group_name"):
             await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
 
     async def receive(self, text_data):
@@ -79,16 +87,26 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if self.chat_type == "direct":
             other_user = await self._get_other_direct_participant(user, self.conversation)
             if other_user:
+                # Create DB notification first (so it exists even if recipient is offline)
+                await self._create_message_notification(
+                    receiver_id=other_user.id,
+                    sender_id=user.id,
+                    conversation_id=self.conversation_id,
+                    content=content,
+                    message_id=message_obj.id,
+                )
+
+                # Then push a websocket notification (recipient may or may not be connected)
                 notification_group = f"user_notifications_{other_user.id}"
                 await self.channel_layer.group_send(
                     notification_group,
                     {
-                        "type": "send_notification",  # Targets NotificationConsumer.send_notification
+                        "type": "send_notification",  # handled by NotificationConsumer.send_notification
                         "conversation_id": self.conversation_id,
                         "sender_id": user.id,
                         "sender_name": user.username,
-                        "content": content[:50]  # Send a preview
-                    }
+                        "content": content[:50],  # Send a preview
+                    },
                 )
 
     async def chat_message(self, event):
@@ -112,7 +130,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def _get_other_direct_participant(self, user, conversation):
-        if self.chat_type != "direct": return None
+        if self.chat_type != "direct":
+            return None
         return conversation.user2 if conversation.user1 == user else conversation.user1
 
     @database_sync_to_async
@@ -130,6 +149,26 @@ class ChatConsumer(AsyncWebsocketConsumer):
             conv = DirectConversation.objects.get(id=self.conversation_id)
             return DirectMessage.objects.create(conversation=conv, sender=user, content=content)
 
+    @database_sync_to_async
+    def _create_message_notification(self, receiver_id, sender_id, conversation_id, content, message_id):
+        """Create a DB notification for a chat message (sync DB call wrapped)."""
+        try:
+            receiver = User.objects.get(id=receiver_id)
+            sender = User.objects.get(id=sender_id)
+
+            Notification.objects.create(
+                user=receiver,
+                sender=sender,
+                type="chat_message",
+                title="New Message",
+                message=(content[:250] if content else "New message"),
+                conversation_id=conversation_id,
+                metadata={"message_id": message_id, "preview": content[:50]},
+            )
+        except User.DoesNotExist:
+            # receiver or sender disappeared; silently ignore
+            pass
+
 
 class NotificationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -141,68 +180,59 @@ class NotificationConsumer(AsyncWebsocketConsumer):
 
         self.notification_group = f"user_notifications_{self.user.id}"
 
-        await self.channel_layer.group_add(
-            self.notification_group,
-            self.channel_name
-        )
+        await self.channel_layer.group_add(self.notification_group, self.channel_name)
         await self.accept()
 
     async def disconnect(self, close_code):
-        if hasattr(self, 'notification_group'):
-            await self.channel_layer.group_discard(
-                self.notification_group,
-                self.channel_name
-            )
+        if hasattr(self, "notification_group"):
+            await self.channel_layer.group_discard(self.notification_group, self.channel_name)
 
     async def send_notification(self, event):
-        """This method is called by group_send from the ChatConsumer."""
-        await self.send(text_data=json.dumps({
-            "type": "new_message",
-            "conversation_id": event["conversation_id"],
-            "sender_id": event["sender_id"],
-            "sender_name": event["sender_name"],
-            "content": event["content"]
-        }))
+        """Called by group_send for chat messages (only forwards payload to client)."""
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "type": "new_message",
+                    "conversation_id": event["conversation_id"],
+                    "sender_id": event["sender_id"],
+                    "sender_name": event["sender_name"],
+                    "content": event["content"],
+                }
+            )
+        )
 
     async def send_rental_notification(self, event):
-        """This is a new handler for rental proposals."""
-        await self.send(text_data=json.dumps({
-            "type": "new_rental_proposal",
-            "title": event.get("title"),
-            "message": event.get("message"),
-            "pulse_id": event.get("pulse_id"),
-            "rental_id": event.get("rental_id"),
-            "proposed_total": event.get("proposed_total"),
-            "renter_id": event.get("renter_id"),
-            "renter_username": event.get("renter_username"),
-        }))
+        """Handler for rental proposals (forward only — DB creation should happen on the view)."""
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "type": "new_rental_proposal",
+                    "title": event.get("title"),
+                    "message": event.get("message"),
+                    "pulse_id": event.get("pulse_id"),
+                    "rental_id": event.get("rental_id"),
+                    "proposed_total": event.get("proposed_total"),
+                    "renter_id": event.get("renter_id"),
+                    "renter_username": event.get("renter_username"),
+                }
+            )
+        )
 
-import json
-from channels.generic.websocket import AsyncWebsocketConsumer
 
 class PulseConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-
         self.room_group_name = "pulses_feed"
 
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
+        await self.channel_layer.group_add(self.room_group_name, self.channel_name)
 
         # 2. Accept the connection
         await self.accept()
         print(f"Connection accepted for group: {self.room_group_name}")
 
     async def disconnect(self, close_code):
-
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
+        await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
         print(f"Connection closed with code: {close_code}")
 
     async def pulse_message(self, event):
         data = event["data"]
-
         await self.send(text_data=json.dumps(data))
