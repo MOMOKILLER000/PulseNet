@@ -21,7 +21,7 @@ from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.measure import D
 from .decorators import api_login_required
 from .models import PendingFollow, Pulse, Friendship, Follow, PulseImage, FavoritePulse, PulseRental, Alert, AlertImage, \
-    PulseComment, PulseRating
+    PulseComment, PulseRating, Notification
 import secrets
 import string
 from django.contrib.auth.hashers import make_password
@@ -911,21 +911,17 @@ def create_pulse_rental(request):
     except Pulse.DoesNotExist:
         return JsonResponse({"success": False, "error": "Pulse not found."}, status=404)
 
-    # Only non-owners can propose
     if pulse.user == request.user:
         return JsonResponse({"success": False, "error": "You cannot propose a rental to your own pulse."}, status=403)
 
-    # Parse dates
     start_date = parse_datetime(start_date_str) or parse_date(start_date_str)
     end_date = parse_datetime(end_date_str) or parse_date(end_date_str)
 
     if not start_date or not end_date or start_date > end_date:
         return JsonResponse({"success": False, "error": "Invalid rental dates."}, status=400)
 
-    # Calculate total days
     total_days = (end_date - start_date).days + 1
 
-    # Validate price
     try:
         proposed_price = float(proposed_price)
         if proposed_price <= 0:
@@ -935,7 +931,6 @@ def create_pulse_rental(request):
 
     proposed_total = proposed_price * total_days
 
-    # Check overlap
     overlapping = PulseRental.objects.filter(
         pulse=pulse,
         start_date__lte=end_date,
@@ -945,7 +940,6 @@ def create_pulse_rental(request):
     if overlapping:
         return JsonResponse({"success": False, "error": "Selected period overlaps with an existing reservation."}, status=400)
 
-    # Create rental proposal
     rental = PulseRental.objects.create(
         pulse=pulse,
         renter=request.user,
@@ -955,6 +949,45 @@ def create_pulse_rental(request):
         initial_price=proposed_total,
         status="pending",
     )
+
+    # -------- CREATE DATABASE NOTIFICATION --------
+
+    notification = Notification.objects.create(
+        user=pulse.user,
+        sender=request.user,
+        type="rental_proposal",
+        title="New Rental Proposal",
+        message=f"{request.user.username} proposed {proposed_total} for {pulse.title}",
+        pulse_id=pulse.id,
+        rental_id=rental.id,
+        metadata={
+            "proposed_total": proposed_total
+        }
+    )
+
+    # -------- SEND WEBSOCKET NOTIFICATION --------
+
+    channel_layer = get_channel_layer()
+
+    async_to_sync(channel_layer.group_send)(
+        f"user_notifications_{pulse.user.id}",
+        {
+            "type": "send_rental_notification",
+            "title": notification.title,
+            "message": notification.message,
+            "pulse_id": pulse.id,
+            "rental_id": rental.id,
+            "proposed_total": proposed_total,
+            "renter_id": request.user.id,
+            "renter_username": request.user.username,
+        }
+    )
+
+    return JsonResponse({
+        "success": True,
+        "rental_id": rental.id,
+        "total_price": proposed_total
+    })
 
     # -------------------------------------------------
     # Send realtime WebSocket notification
@@ -1005,48 +1038,94 @@ def get_user_rentals(request):
 
 @csrf_exempt
 def modify_rental_status(request, rental_id):
+    try:
+        rental = PulseRental.objects.get(id=rental_id)
+    except PulseRental.DoesNotExist:
+        return JsonResponse({"error": "Rental not found"}, status=404)
+
+    user = request.user
+    is_owner = rental.pulse.user == user
+    is_renter = rental.renter == user
+
     if request.method == "PATCH":
+        if not (is_owner or is_renter):
+            return JsonResponse({"error": "Unauthorized"}, status=403)
+
         try:
-            rental = PulseRental.objects.get(id=rental_id)
-
-            if rental.pulse.user != request.user:
-                return JsonResponse({"error": "Unauthorized"}, status=403)
-
             data = json.loads(request.body)
+            status = data.get("status")            # accept / decline
+            new_total_price = data.get("total_price")  # counteroffer price
 
-            status = data.get("status", rental.status)
-            price_per_day = data.get("total_price", rental.total_price)
+            notify_other_user = False
 
-            # Calculate duration
+            # --- handle status update ---
+            if status:
+                rental.status = status
+                rental.last_offer_by = None  # reset last_offer_by if accepted/declined
+
+            # --- handle counteroffer ---
+            if new_total_price is not None:
+                rental.total_price = float(new_total_price)
+                rental.status = "pending"  # counteroffers set status back to pending
+                rental.last_offer_by = user  # track who made the last offer
+                notify_other_user = True     # flag to send notification
+
+            # calculate duration
             duration = (rental.end_date - rental.start_date).days
             if duration <= 0:
                 duration = 1
 
-            total_price = float(price_per_day) * duration
-
-            rental.status = status
-            rental.total_price = total_price
             rental.save()
+
+            # --- send notification if counteroffer was made ---
+            if notify_other_user:
+                other_user = rental.pulse.user if is_renter else rental.renter
+
+                notification = Notification.objects.create(
+                    user=other_user,
+                    sender=user,
+                    type="rental_proposal",
+                    title="Rental Counteroffer",
+                    message=f"{user.username} updated the rental price for {rental.pulse.title} to {rental.total_price}",
+                    pulse_id=rental.pulse.id,
+                    rental_id=rental.id,
+                    metadata={"new_total_price": rental.total_price}
+                )
+
+                # send via WebSocket
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f"user_notifications_{other_user.id}",
+                    {
+                        "type": "send_rental_notification",
+                        "title": notification.title,
+                        "message": notification.message,
+                        "pulse_id": rental.pulse.id,
+                        "rental_id": rental.id,
+                        "total_price": rental.total_price,
+                        "sender_id": user.id,
+                        "sender_username": user.username,
+                    }
+                )
 
             return JsonResponse({
                 "message": "Rental updated successfully",
                 "status": rental.status,
                 "days": duration,
-                "total_price": total_price
+                "total_price": rental.total_price,
+                "last_offer_by": rental.last_offer_by.id if rental.last_offer_by else None
             })
 
-        except PulseRental.DoesNotExist:
-            return JsonResponse({"error": "Rental not found"}, status=404)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
 
     elif request.method == "DELETE":
+        # only renter can cancel their proposal
+        if not is_renter:
+            return JsonResponse({"error": "Only the renter can delete this proposal"}, status=403)
 
-        try:
-            rental = PulseRental.objects.get(id=rental_id)
-
-            rental.delete()
-
-        except PulseRental.DoesNotExist:
-            return JsonResponse({"error": "Rental not found"}, status=404)
+        rental.delete()
+        return JsonResponse({"message": "Proposal deleted successfully"})
 
     return JsonResponse({"error": "Invalid method"}, status=405)
 
@@ -1068,6 +1147,7 @@ def get_rental_proposals(request):
                 "start_date": rental.start_date,
                 "end_date": rental.end_date,
                 "total_price": str(rental.total_price),
+                "last_offer_by": rental.last_offer_by.id if rental.last_offer_by else None,
                 "initial_price": str(rental.initial_price),
                 "status": rental.status,
             })
@@ -1643,3 +1723,52 @@ def create_alert(request):
         "alert_id": alert.id,
         "category_display": alert.get_category_display()
     })
+
+
+@login_required
+def get_notifications(request):
+    notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:20]
+    data = []
+    for n in notifications:
+        data.append({
+            "id": n.id,
+            "type": n.type,
+            "title": n.title,
+            "message": n.message,
+            "pulse_id": n.pulse_id,
+            "rental_id": n.rental_id,
+            "conversation_id": n.conversation_id,
+            "sender_id": n.sender.id,
+            "is_read": n.is_read,
+            "created_at": n.created_at.strftime("%b %d, %H:%M"),
+            "sender_name": n.sender.username if n.sender else "System"
+        })
+
+    return JsonResponse({"notifications": data}, safe=False)
+
+
+@login_required
+def mark_notifications_read(request):
+    Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    return JsonResponse({"status": "success"})
+
+
+@login_required
+def delete_notification(request, notif_id):
+    if request.method != "DELETE":
+        return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
+
+    try:
+        notification = Notification.objects.get(id=notif_id, user=request.user)
+        notification.delete()
+
+        return JsonResponse({
+            "success": True,
+            "message": "Notification deleted"
+        })
+
+    except Notification.DoesNotExist:
+        return JsonResponse({
+            "success": False,
+            "error": "Notification not found"
+        }, status=404)

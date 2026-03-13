@@ -47,6 +47,9 @@ urlpatterns = [
     path("user_profile/<int:user_id>/", views.user_profile, name="user_profile"),
     path("messages/history/<str:chat_type>/<int:conversation_id>/", views.get_message_history, name="chat_history"),
     path("my-conversations/", views.my_conversations, name="my_conversations"),
+    path("notifications/", views.get_notifications, name="get_notifications"),
+    path("notifications/mark-read/", views.mark_notifications_read, name="mark_notifications_read"),
+    path("delete_notification/<int:notif_id>/", views.delete_notification, name="delete_notification"),
 
     # Warnings and shit
     path("alerts/", views.list_alerts, name="list_alerts"),

@@ -105,6 +105,7 @@ class PulseRental(models.Model):
     total_price = models.DecimalField(max_digits=12, decimal_places=2)
     initial_price = models.DecimalField(max_digits=12, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
+    last_offer_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
 
     STATUS_CHOICES = [
         ("pending", "Pending"),
@@ -346,3 +347,79 @@ class AlertImage(models.Model):
     )
     image = models.ImageField(upload_to="alert_images/")
     uploaded_at = models.DateTimeField(auto_now_add=True)
+
+
+class Notification(models.Model):
+    NOTIFICATION_TYPES = (
+        ("rental_proposal", "Rental Proposal"),
+        ("chat_message", "Chat Message"),
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name="sent_notifications")
+
+    type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES)
+
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+
+    # Optional references depending on notification type
+    pulse_id = models.IntegerField(null=True, blank=True)
+    rental_id = models.IntegerField(null=True, blank=True)
+    conversation_id = models.IntegerField(null=True, blank=True)
+
+    # Flexible extra data
+    metadata = models.JSONField(null=True, blank=True)
+
+    is_read = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.type}"
+
+
+class UrgentRequest(models.Model):
+    user = models.ForeignKey(
+        "User",
+        on_delete=models.CASCADE,
+        related_name="urgent_requests"
+    )
+    title = models.CharField(max_length=200)  # optional description of request
+    description = models.TextField(blank=True)
+
+    category = models.CharField(max_length=150, blank=True)
+
+    PULSE_TYPE_CHOICES = [
+        ("servicii", "Servicii / Evenimente"),
+        ("obiecte", "Obiecte / Produse"),
+    ]
+    pulse_type = models.CharField(
+        max_length=20,
+        choices=PULSE_TYPE_CHOICES,
+        blank=True
+    )
+
+    max_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Maximum price user is willing to pay"
+    )
+
+    location = models.PointField(srid=4326, null=True, blank=True)
+    radius_km = models.IntegerField(default=10, help_text="Search radius in km")
+
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"UrgentRequest by {self.user.username} ({self.title})"
