@@ -21,6 +21,7 @@ urlpatterns = [
 
     # --- UNIFIED PULSE SYSTEM ---
     path('add_pulse/', views.add_pulse, name='add_pulse'),
+    path("update_pulse/<int:pulse_id>/", views.update_pulse, name="update_pulse"),
     path('remove_pulse/<int:pulse_id>/', views.remove_pulse, name='remove_pulse'),
     path('get_latest_pulses/', views.get_latest_pulses, name='get_latest_pulses'),
     path("get_nearest_pulses/", views.get_nearest_pulses, name="get_nearest_pulses"),

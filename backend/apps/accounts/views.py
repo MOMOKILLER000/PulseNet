@@ -27,6 +27,7 @@ import string
 from django.contrib.auth.hashers import make_password
 from django.db import models
 from decimal import Decimal
+from django.shortcuts import get_object_or_404
 from django.contrib.gis.db.models.functions import Distance as GisDistance
 
 def generate_password(length=12):
@@ -236,7 +237,7 @@ def profile(request):
                 "id": p.id,
                 "title": p.title,
                 "pulseType": p.pulse_type,
-                "category": p.category,
+                "category": p.pulse_type,
                 "price": float(p.price),
                 "currencyType": p.currencyType,
                 "description": p.description,
@@ -284,8 +285,8 @@ def update_profile(request):
         user.email = data.get('email', user.email)
         user.biography = data.get('biography', user.biography)
         user.online_status = data.get("online_status", user.online_status)
-        user.quiet_hours_start = data.get("quiet_hours_start", user.quiet_hours_start)
-        user.quiet_hours_end = data.get("quiet_hours_end", user.quiet_hours_end)
+        user.quiet_hours_start = data.get("quiet_hours_start") or None
+        user.quiet_hours_end = data.get("quiet_hours_end") or None
         user.visibility_radius = data.get('visibility_radius', user.visibility_radius)
         # 3. Validate and save
         user.save()
@@ -328,7 +329,8 @@ def update_profile(request):
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON format"}, status=400)
     except ValidationError as e:
-        return JsonResponse({"error": e.message_dict}, status=400)
+        errors = getattr(e, 'message_dict', None) or e.messages
+        return JsonResponse({"error": errors}, status=400)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
@@ -492,6 +494,81 @@ def add_pulse(request):
         return JsonResponse({"success": False, "error": str(e)}, status=400)
 
 #adauga obiect in profile page
+
+
+@login_required
+@require_http_methods(["POST"])
+def update_pulse(request, pulse_id):
+    try:
+        pulse = get_object_or_404(Pulse, id=pulse_id)
+        if pulse.user != request.user:
+            return JsonResponse({"error": "Permission denied"}, status=403)
+
+        # Determine if JSON or FormData
+        if request.content_type.startswith("application/json"):
+            data = json.loads(request.body or "{}")
+        else:
+            data = request.POST
+        # --- Update fields if present ---
+        pulse.title = data.get("title", pulse.title)
+        pulse.pulse_type = data.get("category", pulse.category)
+        pulse.price = data.get("price", pulse.price)
+        pulse.currencyType = data.get("currencyType", pulse.currencyType)
+        pulse.description = data.get("description", pulse.description)
+        pulse.phone_number = data.get("phone_number", pulse.phone_number)
+
+        # Location handling (GeoJSON)
+        loc = data.get("location") if hasattr(data, "get") else None
+        if loc:
+            coords = loc.get("coordinates")
+            if coords and len(coords) == 2:
+                pulse.location = Point(coords[0], coords[1], srid=4326)
+        elif loc is None:
+            pulse.location = None  # allow clearing location
+
+        pulse.full_clean()
+        pulse.save()
+
+        # --- Handle uploaded images ---
+        removed_images = request.POST.getlist("removed_images")
+        if removed_images:
+            for url in removed_images:
+                filename = url.split("/")[-1]
+                pulse.images.filter(image__icontains=filename).delete()
+
+        # Add new uploaded images
+        uploaded_files = request.FILES.getlist("images")
+        for img in uploaded_files:
+            pulse.images.create(image=img)
+
+        # Prepare response data
+        pulse_data = {
+            "id": pulse.id,
+            "title": pulse.title,
+            "pulseType": pulse.pulse_type,
+            "category": pulse.category,
+            "price": float(pulse.price) if pulse.price is not None else None,
+            "currencyType": pulse.currencyType,
+            "description": pulse.description,
+            "phone_number": pulse.phone_number,
+            "location": {
+                "type": "Point",
+                "coordinates": [pulse.location.x, pulse.location.y]
+            } if pulse.location else None,
+            "images": [request.build_absolute_uri(img.image.url) for img in pulse.images.all()],
+        }
+
+        return JsonResponse({"message": "Pulse updated", "pulse": pulse_data}, status=200)
+
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    except ValidationError as e:
+        errors = getattr(e, "message_dict", None) or e.messages
+        return JsonResponse({"error": errors}, status=400)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
 @login_required
 @require_http_methods(["DELETE"])
 def remove_pulse(request, pulse_id):
