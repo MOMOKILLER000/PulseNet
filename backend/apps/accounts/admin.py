@@ -32,7 +32,7 @@ class LocationAdminForm(forms.ModelForm):
 class CustomUserAdmin(UserAdmin):
     form = LocationAdminForm
     fieldsets = UserAdmin.fieldsets + (
-        ('Custom Profile', {'fields': ('profile_picture', 'biography', 'lat', 'lng', 'visibility_radius', 'online_status')}),
+        ('Custom Profile', {'fields': ('profile_picture', 'biography', 'lat', 'lng', 'visibility_radius', 'quiet_hours_start', 'quiet_hours_end', 'online_status')}),
     )
 
 @admin.register(Pulse)
