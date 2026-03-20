@@ -48,7 +48,7 @@ def find_heroes_for_urgent_requests(request_id):
                 if s > best_score:
                     best_score = s
 
-            if best_score > 0.80:
+            if best_score > 0.50:
                 matches.append({"neighbor_id": neighbor.id, "score": best_score})
 
         matches = sorted(matches, key=lambda x: x["score"], reverse=True)

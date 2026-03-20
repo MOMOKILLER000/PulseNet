@@ -1,63 +1,207 @@
-.container {
-    max-width: 500px;
-    margin: 40px auto;
-    padding: 25px;
-    background: #e9e6e6;
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+/* --- Tailwind Utility Classes --- */
+.pageWrapper { @apply min-h-screen bg-slate-50 font-sans; }
+.mainContainer { @apply max-w-4xl mx-auto py-12 px-4 sm:px-6; }
+.formCard { @apply bg-white rounded-2xl shadow-sm border border-slate-100 p-8 sm:p-10; }
+.title { @apply text-xl font-semibold text-slate-800 mb-8; }
+.form { @apply space-y-8; }
+.gridRow { @apply grid grid-cols-1 md:grid-cols-2 gap-6; }
+.inputGroup { @apply flex flex-col; }
+.label { @apply block text-sm font-medium text-slate-500 mb-2; }
+
+.inputField {
+    @apply w-full rounded-lg border border-slate-200 px-4 py-2.5 text-slate-700;
+    @apply focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all;
 }
 
-h2 {
-    text-align: center;
-    margin-bottom: 20px;
+.textArea {
+    @apply w-full rounded-lg border border-slate-200 px-4 py-3 text-slate-700;
+    @apply focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none;
 }
 
-.form {
+.categoryLabel { @apply block text-sm font-medium text-slate-500 mb-4; }
+.categoryGrid { @apply flex flex-wrap gap-3; }
+.categoryBtnBase { @apply flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-300 ease-in-out border border-transparent; }
+
+/* Category Button States */
+.catDefault { @apply bg-purple-50 text-purple-700 hover:bg-purple-100; }
+.catSelected { @apply bg-purple-100 text-purple-900 ring-2 ring-purple-200 shadow-sm; }
+.catInactive { @apply bg-slate-100 text-slate-400 opacity-60 hover:opacity-80; }
+
+.submitWrapper { @apply pt-6 flex justify-end; }
+.submitBtn {
+    @apply bg-[#2D0B44] hover:bg-[#1f0730] text-white px-8 py-3 rounded-lg font-medium;
+    @apply flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+
+/* =========================================
+   Image Upload Section Styles
+   ========================================= */
+.imageUploadSection {
     display: flex;
     flex-direction: column;
-    gap: 12px;
 }
 
-input,
-textarea {
-    padding: 10px;
-    border-radius: 10px;
-    border: none;
-    outline: none;
-    font-size: 14px;
+.imageGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
 }
 
-textarea {
-    resize: none;
-    min-height: 100px;
-}
-
-button {
-    padding: 10px;
-    border: none;
+.imagePreviewBox {
+    aspect-ratio: 1 / 1;
     border-radius: 12px;
-    background: #00bfa5;
+    position: relative;
+    background-size: cover;
+    background-position: center;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    overflow: hidden;
+    transition: transform 0.2s ease;
+}
+
+.imagePreviewBox:hover {
+    transform: scale(1.02);
+}
+
+.imagePreviewBox::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.imagePreviewBox:hover::before {
+    opacity: 1;
+}
+
+.removeImgBtn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    background: #ef4444;
     color: white;
-    font-weight: bold;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
-    transition: 0.2s;
+    opacity: 0;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 4px 6px rgba(239, 68, 68, 0.4);
 }
 
-button:hover {
-    background: #009e88;
+.imagePreviewBox:hover .removeImgBtn {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
 }
 
-.locationBtn {
-    background: #ff8a65;
+.removeImgBtn:hover {
+    background: #dc2626;
+    transform: translate(-50%, -50%) scale(1.1) !important;
 }
 
-.locationBtn:hover {
-    background: #e76f51;
+.uploadBtnBox {
+    aspect-ratio: 1 / 1;
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #64748b;
+    background-color: #f8fafc;
+    transition: all 0.2s ease;
+    gap: 0.5rem;
 }
 
-.locationStatus {
-    font-size: 13px;
-    text-align: center;
-    margin-bottom: 10px;
-    color: #555;
+.uploadBtnBox span {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.uploadBtnBox:hover {
+    border-color: #7c3aed; /* Changed hover to purple to match theme instead of red */
+    background-color: #f5f3ff;
+    color: #7c3aed;
+}
+
+@media (max-width: 640px) {
+    .imageGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+
+/* =========================================
+   React Datepicker Overrides
+   ========================================= */
+:global(.react-datepicker-wrapper),
+:global(.react-datepicker__input-container) {
+    display: block !important;
+    width: 100%;
+}
+
+:global(.react-datepicker) {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+    font-family: inherit !important;
+    overflow: hidden;
+}
+
+:global(.react-datepicker__header) {
+    background-color: #ffffff !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    padding-top: 12px !important;
+}
+
+:global(.react-datepicker__current-month) {
+    color: #1e293b !important;
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
+    margin-bottom: 8px !important;
+}
+
+:global(.react-datepicker__day) {
+    color: #475569 !important;
+    width: 2.2rem !important;
+    line-height: 2.2rem !important;
+    margin: 0.2rem !important;
+    transition: all 0.2s ease;
+}
+
+:global(.react-datepicker__day:hover) {
+    background-color: #f5f3ff !important;
+    color: #7c3aed !important;
+    border-radius: 8px !important;
+}
+
+:global(.react-datepicker__day--selected),
+:global(.react-datepicker__day--keyboard-selected) {
+    background-color: #2D0B44 !important;
+    color: white !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+}
+
+:global(.react-datepicker__day-name) {
+    color: #94a3b8 !important;
+    font-weight: 500 !important;
+}
+
+:global(.react-datepicker__navigation) {
+    top: 12px !important;
+}
+
+:global(.react-datepicker__navigation-icon::before) {
+    border-color: #94a3b8 !important;
+    border-width: 2px 2px 0 0 !important;
 }
