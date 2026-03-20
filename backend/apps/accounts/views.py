@@ -23,7 +23,7 @@ from networkx.algorithms.distance_measures import radius
 
 from .decorators import api_login_required
 from .models import PendingFollow, Pulse, Friendship, Follow, PulseImage, FavoritePulse, PulseRental, Alert, AlertImage, \
-    PulseComment, PulseRating, Notification, UrgentRequest, AlertConfirm, AlertReport
+    PulseComment, PulseRating, Notification, UrgentRequest, UrgentRequestImage, AlertConfirm, AlertReport
 import secrets
 import string
 from django.contrib.auth.hashers import make_password
@@ -2085,6 +2085,7 @@ def urgent_requests_list(request):
         .filter(is_active=True, location__isnull=False)
         .exclude(user=user)
         .select_related("user")
+        .prefetch_related("images")
         .annotate(dist=GisDistance("location", user.location))
     )
     # Show requests where the viewer is within the poster's visibility_radius
@@ -2108,12 +2109,12 @@ def urgent_requests_list(request):
                 "title": obj.title,
                 "description": obj.description,
                 "category": obj.category,
-                "pulse_type": obj.pulse_type,
                 "max_price": float(obj.max_price) if obj.max_price else None,
                 "location": [obj.location.x, obj.location.y] if obj.location else None,
                 "created_at": obj.created_at.isoformat(),
                 "expires_at": obj.expires_at.isoformat() if obj.expires_at else None,
                 "match_score": round(best_score * 100, 1),
+                "images": [request.build_absolute_uri(img.image.url) for img in obj.images.all()],
             })
 
     data.sort(key=lambda x: x["match_score"], reverse=True)
@@ -2126,6 +2127,8 @@ def urgent_request_detail(request, request_id):
     except UrgentRequest.DoesNotExist:
         return JsonResponse({"success": False, "error": "Urgent request not found"}, status=404)
 
+
+
     data = {
         "id": obj.id,
         "user_id": obj.user.id,
@@ -2133,7 +2136,6 @@ def urgent_request_detail(request, request_id):
         "title": obj.title,
         "description": obj.description,
         "category": obj.category,
-        "pulse_type": obj.pulse_type,
         "max_price": float(obj.max_price) if obj.max_price else None,
         "location": [obj.location.x, obj.location.y] if obj.location else None,
         "created_at": obj.created_at.isoformat(),
@@ -2146,7 +2148,7 @@ def urgent_request_detail(request, request_id):
 @login_required
 @require_POST
 def create_urgent_request(request):
-    data = json.loads(request.body)
+    data = request.POST
 
     new_request = UrgentRequest.objects.create(
         user=request.user,
@@ -2154,10 +2156,13 @@ def create_urgent_request(request):
         title=data.get("title"),
         category=data.get("category"),
         expires_at=data.get("expires_at"),
-        pulse_type=data.get("pulse_type"),
         location=Point(float(data["lng"]), float(data["lat"])) if "lng" in data and "lat" in data else None,
         max_price=data.get("max_price", 0),
     )
+
+    images = request.FILES.getlist("images")
+    for img in images:
+        UrgentRequestImage.objects.create(urgent_request=new_request, image=img)
 
     run_hero_search_task.delay(new_request.id)
 

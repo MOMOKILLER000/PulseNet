@@ -521,16 +521,6 @@ class UrgentRequest(models.Model):
 
     category = models.CharField(max_length=150, blank=True)
 
-    PULSE_TYPE_CHOICES = [
-        ("servicii", "Servicii / Evenimente"),
-        ("obiecte", "Obiecte / Produse"),
-    ]
-    pulse_type = models.CharField(
-        max_length=20,
-        choices=PULSE_TYPE_CHOICES,
-        blank=True
-    )
-
     max_price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -550,3 +540,13 @@ class UrgentRequest(models.Model):
 
     def __str__(self):
         return f"UrgentRequest by {self.user.username} ({self.title})"
+
+
+class UrgentRequestImage(models.Model):
+    urgent_request = models.ForeignKey(
+        UrgentRequest,
+        on_delete=models.CASCADE,
+        related_name="images"
+    )
+    image = models.ImageField(upload_to="urgent_request_images/")
+    uploaded_at = models.DateTimeField(auto_now_add=True)

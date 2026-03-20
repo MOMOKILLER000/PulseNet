@@ -65,6 +65,13 @@ export default function UrgentRequests() {
                         }}
                     >
                         <header className={styles.cardHeader}>
+                            {it.images && it.images.length > 0 && (
+                                <img
+                                    src={it.images[0]}
+                                    alt="Request"
+                                    className={styles.thumbnail}
+                                />
+                            )}
                             <div>
                                 <h3 className={styles.title}>
                                     {it.title || it.pulse_type || "Urgent request"}
