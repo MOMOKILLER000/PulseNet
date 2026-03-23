@@ -4,6 +4,9 @@ from django.contrib.gis.db import models
 from django.contrib.postgres.fields import ArrayField
 from django.utils.crypto  import get_random_string
 from django.db.models import F
+from pgvector.django import VectorField
+
+
 # Create your models here.
 from django.utils import timezone
 from pgvector.django import VectorField
