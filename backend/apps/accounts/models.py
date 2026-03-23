@@ -5,6 +5,7 @@ from django.contrib.postgres.fields import ArrayField
 from django.utils.crypto  import get_random_string
 from django.db.models import F
 # Create your models here.
+from django.utils import timezone
 
 class User(AbstractUser):
 
@@ -52,11 +53,7 @@ class User(AbstractUser):
     # Add this helper property near your is_quiet_now function
     @property
     def is_banned(self):
-        from django.utils import timezone
-        if self.banned_until:
-            # If the current time is before the ban expiration time, they are banned
-            return timezone.now() < self.banned_until
-        return False
+        return bool(self.banned_until and timezone.now() < self.banned_until)
 
     #transform JSON list in an embedded vector
     def get_skills_text(self):
