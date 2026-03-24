@@ -560,6 +560,7 @@ class UrgentRequest(models.Model):
         blank=True,
         help_text="Maximum price user is willing to pay"
     )
+    currencyType = models.CharField(max_length=10, default="RON")
 
     location = models.PointField(srid=4326, null=True, blank=True)
 

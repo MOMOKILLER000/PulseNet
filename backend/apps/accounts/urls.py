@@ -22,6 +22,7 @@ urlpatterns = [
 
     # --- UNIFIED PULSE SYSTEM ---
     path('add_pulse/', views.add_pulse, name='add_pulse'),
+    path("list-all-pulses/", views.list_all_pulses, name="list_all_pulses"),
     path("update_pulse/<int:pulse_id>/", views.update_pulse, name="update_pulse"),
     path('remove_pulse/<int:pulse_id>/', views.remove_pulse, name='remove_pulse'),
     path('get_latest_pulses/', views.get_latest_pulses, name='get_latest_pulses'),
@@ -64,7 +65,7 @@ urlpatterns = [
     #Urgent requests
     path('urgent-requests/create/', views.create_urgent_request, name='create_urgent_request'),
     path("urgent-requests/", views.urgent_requests_list, name="urgent_requests_list"),
-    path("urgent-requests/<int:pk>/", views.urgent_request_detail, name="urgent_request_detail"),
+    path("urgent-request/<int:request_id>/", views.get_request_by_id, name="urgent_request_detail"),
     path('urgent-requests/comments/<int:request_id>/', views.get_request_comments, name='get_request_comments'),
     path("list-all-requests/", views.list_all_requests, name="list_all_requests"),
 
@@ -74,5 +75,8 @@ urlpatterns = [
     path('unban-user/<int:user_id>/', views.unban_user, name='unban_user'),
     path('flagged_posts/', views.flagged_posts, name='flagged_posts'),
     path('delete_report/<int:report_id>/', views.delete_report, name='delete_report'),
+    path('delete-pulse/<int:id>/', views.delete_pulse, name='delete_pulse'),
+    path('delete-alert/<int:id>/', views.delete_alert, name='delete_alert'),
+    path('delete-urgent-request/<int:id>/', views.delete_urgent_request, name='delete_urgent_request'),
 
 ]

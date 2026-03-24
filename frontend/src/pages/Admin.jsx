@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styles from '../styles/Admin.module.css';
+import Navbar from "@/components/Navbar";
 
 function getCookie(name) {
     if (typeof document === "undefined") return null;
@@ -67,6 +68,67 @@ const Admin = () => {
     const [selectedUserToUnban, setSelectedUserToUnban] = useState(null);
     const [unbanSubmitting, setUnbanSubmitting] = useState(false);
     const [unbanError, setUnbanError] = useState('');
+
+    const [deletingItemId, setDeletingItemId] = useState(null);
+
+    const handleDeleteFlaggedItem = async (item, itemType) => {
+        const confirmDelete = window.confirm(
+            `Are you sure you want to delete this ${itemType}? This action cannot be undone.`
+        );
+
+        if (!confirmDelete) return;
+
+        setDeletingItemId(item.id);
+
+        try {
+            let url = '';
+
+            // Adjust these endpoints to match your backend
+            if (itemType === 'pulse') {
+                url = `http://localhost:8000/accounts/delete-pulse/${item.id}/`;
+            } else if (itemType === 'alert') {
+                url = `http://localhost:8000/accounts/delete-alert/${item.id}/`;
+            } else if (itemType === 'urgent_request') {
+                url = `http://localhost:8000/accounts/delete-urgent-request/${item.id}/`;
+            }
+
+            const response = await fetch(url, {
+                method: 'DELETE',
+                credentials: 'include',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Delete failed');
+            }
+
+            // remove from UI immediately
+            setFlaggedData((prev) => ({
+                ...prev,
+                pulses:
+                    itemType === 'pulse'
+                        ? prev.pulses.filter((x) => x.id !== item.id)
+                        : prev.pulses,
+                alerts:
+                    itemType === 'alert'
+                        ? prev.alerts.filter((x) => x.id !== item.id)
+                        : prev.alerts,
+                urgent_requests:
+                    itemType === 'urgent_request'
+                        ? prev.urgent_requests.filter((x) => x.id !== item.id)
+                        : prev.urgent_requests,
+            }));
+        } catch (error) {
+            console.error(error);
+            alert('Could not delete this item.');
+        } finally {
+            setDeletingItemId(null);
+        }
+    };
 
     useEffect(() => {
         const fetchSystemData = async () => {
@@ -254,6 +316,10 @@ const Admin = () => {
     };
 
     return (
+        <div className={styles.bodyContainer}>
+            <div className={styles.navbarAdjust}>
+                <Navbar />
+            </div>
         <div className={styles.container}>
             <header className={styles.header}>
                 <h1 className={styles.title}>
@@ -530,87 +596,177 @@ const Admin = () => {
 
                 {activeTab === 'flagged' && (
                     <div className={styles.panel}>
-                        <h2 className={styles.panelTitle}>Flagged Content Review</h2>
+                        <div className={styles.flaggedHeader}>
+                            <div>
+                                <h2 className={styles.panelTitle}>Flagged Content Review</h2>
+                                <p className={styles.flaggedSubtitle}>
+                                    Review reported content and remove items that violate platform rules.
+                                </p>
+                            </div>
+                            <div className={styles.flaggedSummary}>
+                                <div className={styles.summaryChip}>
+                                    Pulses <span>{flaggedData.pulses.length}</span>
+                                </div>
+                                <div className={styles.summaryChip}>
+                                    Alerts <span>{flaggedData.alerts.length}</span>
+                                </div>
+                                <div className={styles.summaryChip}>
+                                    Urgent <span>{flaggedData.urgent_requests.length}</span>
+                                </div>
+                            </div>
+                        </div>
 
                         {loadingData ? (
                             <div className={styles.loader}>Loading Flagged Data...</div>
                         ) : (
                             <div className={styles.gridContainer}>
-                                {/* Flagged Pulses */}
                                 <div className={styles.flaggedCard}>
-                                    <h3 className={styles.cardHeader}>
-                                        Flagged Pulses <span className={styles.countBadge}>{flaggedData.pulses.length}</span>
-                                    </h3>
+                                    <div className={styles.cardHeader}>
+                                        <span>Flagged Pulses</span>
+                                        <span className={styles.countBadge}>{flaggedData.pulses.length}</span>
+                                    </div>
+
                                     <div className={styles.cardBody}>
-                                        {flaggedData.pulses.map(item => (
-                                            <div
-                                                key={item.id}
-                                                className={styles.flaggedItem}
-                                                onClick={() => navigate(`/pulse/${item.pulse_type}/${item.id}`)}
-                                                style={{ cursor: 'pointer' }}
-                                                title="View Pulse Details"
-                                            >
-                                                <h4>
-                                                    {item.title} <span className={styles.toxScore}>Tox: {item.toxicity_score}</span>
-                                                </h4>
-                                                <p className={styles.metaData}>
-                                                    User: <strong>@{item.user__username}</strong> • Type: {item.pulse_type}
-                                                </p>
-                                                <p className={styles.subText}>{item.description}</p>
-                                            </div>
-                                        ))}
+                                        {flaggedData.pulses.length === 0 ? (
+                                            <div className={styles.emptyState}>No flagged pulses.</div>
+                                        ) : (
+                                            flaggedData.pulses.map((item) => (
+                                                <div
+                                                    key={item.id}
+                                                    className={styles.flaggedItem}
+                                                    onClick={() => navigate(`/pulse/${item.pulse_type}/${item.id}`)}
+                                                    title="Open pulse"
+                                                >
+                                                    <div className={styles.itemTopRow}>
+                                                        <h4 className={styles.itemTitle}>{item.title}</h4>
+                                                        <span className={styles.toxScore}>Tox {item.toxicity_score}</span>
+                                                    </div>
+
+                                                    <p className={styles.metaData}>
+                                                        User: <strong>@{item.user__username}</strong>
+                                                    </p>
+                                                    <p className={styles.subText}>{item.description}</p>
+
+                                                    <div className={styles.itemActions} onClick={(e) => e.stopPropagation()}>
+                                                        <button
+                                                            type="button"
+                                                            className={styles.openButton}
+                                                            onClick={() => navigate(`/pulse/${item.pulse_type}/${item.id}`)}
+                                                        >
+                                                            Open
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className={styles.deleteMiniButton}
+                                                            onClick={() => handleDeleteFlaggedItem(item, 'pulse')}
+                                                            disabled={deletingItemId === item.id}
+                                                        >
+                                                            {deletingItemId === item.id ? 'Deleting...' : 'Delete'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
                                     </div>
                                 </div>
 
-                                {/* Flagged Alerts */}
                                 <div className={styles.flaggedCard}>
-                                    <h3 className={styles.cardHeader}>
-                                        Flagged Alerts <span className={styles.countBadge}>{flaggedData.alerts.length}</span>
-                                    </h3>
+                                    <div className={styles.cardHeader}>
+                                        <span>Flagged Alerts</span>
+                                        <span className={styles.countBadge}>{flaggedData.alerts.length}</span>
+                                    </div>
+
                                     <div className={styles.cardBody}>
-                                        {flaggedData.alerts.map(item => (
-                                            <div
-                                                key={item.id}
-                                                className={styles.flaggedItem}
-                                                onClick={() => navigate(`/alert/${item.id}`)}
-                                                style={{ cursor: 'pointer' }}
-                                                title="View Alert Details"
-                                            >
-                                                <h4>
-                                                    {item.title} <span className={styles.toxScore}>Tox: {item.toxicity_score}</span>
-                                                </h4>
-                                                <p className={styles.metaData}>
-                                                    User: <strong>@{item.user__username}</strong>
-                                                </p>
-                                                <p className={styles.subText}>{item.description}</p>
-                                            </div>
-                                        ))}
+                                        {flaggedData.alerts.length === 0 ? (
+                                            <div className={styles.emptyState}>No flagged alerts.</div>
+                                        ) : (
+                                            flaggedData.alerts.map((item) => (
+                                                <div
+                                                    key={item.id}
+                                                    className={styles.flaggedItem}
+                                                    onClick={() => navigate(`/alert/${item.id}`)}
+                                                    title="Open alert"
+                                                >
+                                                    <div className={styles.itemTopRow}>
+                                                        <h4 className={styles.itemTitle}>{item.title}</h4>
+                                                        <span className={styles.toxScore}>Tox {item.toxicity_score}</span>
+                                                    </div>
+
+                                                    <p className={styles.metaData}>
+                                                        User: <strong>@{item.user__username}</strong>
+                                                    </p>
+                                                    <p className={styles.subText}>{item.description}</p>
+
+                                                    <div className={styles.itemActions} onClick={(e) => e.stopPropagation()}>
+                                                        <button
+                                                            type="button"
+                                                            className={styles.openButton}
+                                                            onClick={() => navigate(`/alert/${item.id}`)}
+                                                        >
+                                                            Open
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className={styles.deleteMiniButton}
+                                                            onClick={() => handleDeleteFlaggedItem(item, 'alert')}
+                                                            disabled={deletingItemId === item.id}
+                                                        >
+                                                            {deletingItemId === item.id ? 'Deleting...' : 'Delete'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
                                     </div>
                                 </div>
 
-                                {/* Urgent Requests */}
                                 <div className={styles.flaggedCard}>
-                                    <h3 className={styles.cardHeader}>
-                                        Urgent Requests <span className={styles.countBadge}>{flaggedData.urgent_requests.length}</span>
-                                    </h3>
+                                    <div className={styles.cardHeader}>
+                                        <span>Urgent Requests</span>
+                                        <span className={styles.countBadge}>{flaggedData.urgent_requests.length}</span>
+                                    </div>
+
                                     <div className={styles.cardBody}>
-                                        {flaggedData.urgent_requests.map(item => (
-                                            <div
-                                                key={item.id}
-                                                className={styles.flaggedItem}
-                                                onClick={() => navigate(`/pulse/${item.pulse_type}/${item.id}`)}
-                                                style={{ cursor: 'pointer' }}
-                                                title="View Urgent Request"
-                                            >
-                                                <h4>
-                                                    {item.title} <span className={styles.toxScore}>Tox: {item.toxicity_score}</span>
-                                                </h4>
-                                                <p className={styles.metaData}>
-                                                    User: <strong>@{item.user__username}</strong>
-                                                </p>
-                                                <p className={styles.subText}>{item.description}</p>
-                                            </div>
-                                        ))}
+                                        {flaggedData.urgent_requests.length === 0 ? (
+                                            <div className={styles.emptyState}>No urgent requests.</div>
+                                        ) : (
+                                            flaggedData.urgent_requests.map((item) => (
+                                                <div
+                                                    key={item.id}
+                                                    className={styles.flaggedItem}
+                                                    onClick={() => navigate(`/request/${item.id}`)}
+                                                    title="Open urgent request"
+                                                >
+                                                    <div className={styles.itemTopRow}>
+                                                        <h4 className={styles.itemTitle}>{item.title}</h4>
+                                                        <span className={styles.toxScore}>Tox {item.toxicity_score}</span>
+                                                    </div>
+
+                                                    <p className={styles.metaData}>
+                                                        User: <strong>@{item.user__username}</strong>
+                                                    </p>
+                                                    <p className={styles.subText}>{item.description}</p>
+
+                                                    <div className={styles.itemActions} onClick={(e) => e.stopPropagation()}>
+                                                        <button
+                                                            type="button"
+                                                            className={styles.openButton}
+                                                            onClick={() => navigate(`/request/${item.id}`)}
+                                                        >
+                                                            Open
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className={styles.deleteMiniButton}
+                                                            onClick={() => handleDeleteFlaggedItem(item, 'urgent_request')}
+                                                            disabled={deletingItemId === item.id}
+                                                        >
+                                                            {deletingItemId === item.id ? 'Deleting...' : 'Delete'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -752,6 +908,7 @@ const Admin = () => {
                     </div>
                 </div>
             )}
+        </div>
         </div>
     );
 };

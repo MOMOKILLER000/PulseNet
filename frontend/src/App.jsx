@@ -24,7 +24,8 @@ const AlertPage = React.lazy(() => import('./pages/Alerts/AlertPage.jsx'));
 const UrgentRequests = React.lazy(() => import('./pages/Requests/UrgentRequests.jsx'));
 const CreateRequest = React.lazy(() => import('./pages/Requests/CreateRequest.jsx'));
 const Admin = React.lazy(()=> import('./pages/Admin.jsx'));
-
+const RequestDetails = React.lazy(()=> import('./pages/Requests/RequestDetails.jsx'));
+const Pulses = React.lazy(()=> import('./pages/Pulses_pages/Pulses.jsx'));
 
 const NotificationHandler = ({ currentUser }) => {
     const location = useLocation();
@@ -345,6 +346,7 @@ function App() {
 
                     {/* I noticed some routes below aren't protected. You might want to wrap them in `user ? ... : <Navigate to="/login" />` if they require auth! */}
                     <Route path="/add-pulse" element={<ProtectedRoute><AddPulses/></ProtectedRoute>} />
+                    <Route path="/pulses" element={<Pulses />} />
                     <Route path="pulse/:type/:id" element={<PulseDetails />} />
                     <Route path="/transaction/:pulseId" element={<ProtectedRoute><PulseTransaction /></ProtectedRoute>} />
                     <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
@@ -355,6 +357,7 @@ function App() {
                     <Route path="/admin-page" element={<AdminRoute><Admin /></AdminRoute>} />
                     <Route path="/urgent-requests" element={<UrgentRequests />} />
                     <Route path="/create-request" element={<ProtectedRoute><CreateRequest /></ProtectedRoute>} />
+                    <Route path="/request/:id" element={<ProtectedRoute><RequestDetails /></ProtectedRoute>} />
                     <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
             </Suspense>

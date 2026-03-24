@@ -57,6 +57,11 @@ export default function Index() {
         navigate(`/pulse/${pulse.type}/${pulse.id}`);
     };
 
+    const openRequest = (req) => {
+        // navigate to /pulse/:type/:id
+        navigate(`/request/${req.id}`);
+    };
+
     // -------------------------
     // Handle broken images
     // -------------------------
@@ -625,8 +630,24 @@ export default function Index() {
                             <p>No urgent requests at the moment.</p>
                         ) : (
                             urgentRequests.slice(0, 3).map((req) => (
-                                <div key={req.id} className={styles.one}>
+                                <div key={req.id} className={styles.one} onClick={() => openRequest(req)}>
+                                    <div className={styles.img}>
+                                        <img
+                                            src={req.image || DEFAULT_IMAGE}
+                                            alt="Pulse"
+                                            className={styles.aoleu}
+                                            onError={handleImageError}
+                                        />
+                                    </div>
                                     <div className={styles.sus1}>
+                                        <div className={styles.profil}>
+                                            <img
+                                                src={req.user_avatar || DEFAULT_AVATAR}
+                                                alt="User"
+                                                className={styles.cafea}
+                                                onError={handleAvatarError}
+                                            />
+                                        </div>
                                         <div className={styles.titlu}>@{req.user}</div>
                                         <div className={styles.timing}>• {new Date(req.created_at).toLocaleString()}</div>
                                     </div>
@@ -701,7 +722,14 @@ export default function Index() {
                         )}
                     </div>
                 </div>
-
+                <div className={styles.nush}>
+                        <div>
+                            <button className={styles.scrie} onClick={() => navigate(`/pulses`)}>See all pulses</button>
+                        </div>
+                    <div>
+                        <button className={styles.vezi} onClick={() => navigate(`/urgent-requests`)}>See all requests</button>
+                    </div>
+                </div>
             </div>
         </div>
     );

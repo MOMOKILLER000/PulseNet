@@ -637,6 +637,65 @@ def get_base_pulse_queryset(user):
 
     return qs
 
+
+@require_GET
+def list_all_pulses(request):
+    page = int(request.GET.get("page", 1))
+    page_size = 15
+
+    qs = (
+        Pulse.objects
+        .select_related("user")
+        .prefetch_related("images")
+        .order_by("-created_at")
+    )
+
+    total_count = qs.count()
+    total_pages = ceil(total_count / page_size)
+
+    start = (page - 1) * page_size
+    end = start + page_size
+
+    pulses = qs[start:end]
+
+    results = []
+    for pulse in pulses:
+        images = [
+            request.build_absolute_uri(img.image.url)
+            for img in pulse.images.all()
+            if img.image
+        ]
+
+        location_data = None
+        if pulse.location:
+            location_data = {
+                "lat": pulse.location.y,
+                "lng": pulse.location.x,
+            }
+
+        results.append({
+            "id": pulse.id,
+            "user": pulse.user.username,
+            "title": pulse.title,
+            "description": pulse.description,
+            "pulseType": pulse.pulse_type,
+            "category": pulse.category,
+            "currencyType": pulse.currencyType,
+            "price": str(pulse.price) if pulse.price else None,
+            "location": location_data,
+            "created_at": pulse.created_at.isoformat() if pulse.created_at else None,
+            "images": images,
+        })
+
+    return JsonResponse({
+        "results": results,
+        "page": page,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_previous": page > 1,
+    })
+
+
 #fixed
 @csrf_protect
 @login_required
@@ -1854,8 +1913,8 @@ def list_alerts(request):
             "category": alert.category,
             "category_display": alert.get_category_display(),
             "created_at": alert.created_at.isoformat(),
-            "lat": float(alert.location.y),
-            "lng": float(alert.location.x),
+            "lat": float(alert.location.y) if alert.location else None,
+            "lng": float(alert.location.x) if alert.location else None,
             "images": [request.build_absolute_uri(img.image.url) for img in alert.images.all()]
         }
         for alert in alerts
@@ -2171,7 +2230,14 @@ def urgent_requests_list(request):
             st_util.cos_sim(query_emb, skill_emb).item()
             for skill_emb in skill_embeddings
         )
+        images = obj.images.all()
 
+        image_urls = [
+            request.build_absolute_uri(img.image.url)
+            for img in images if img.image
+        ]
+
+        image_url = image_urls[0] if image_urls else None
         if best_score > 0.50:
             data.append({
                 "id": obj.id,
@@ -2185,7 +2251,8 @@ def urgent_requests_list(request):
                 "created_at": obj.created_at.isoformat(),
                 "expires_at": obj.expires_at.isoformat() if obj.expires_at else None,
                 "match_score": round(best_score * 100, 1),
-                "images": [request.build_absolute_uri(img.image.url) for img in obj.images.all()],
+                "images": image_urls,
+                "image": image_url,
             })
 
     data.sort(key=lambda x: x["match_score"], reverse=True)
@@ -2234,6 +2301,7 @@ def list_all_requests(request):
             "description": req.description,
             "category": req.category,
             "max_price": str(req.max_price) if req.max_price else None,
+            "currencyType": req.currencyType,
             "location": location_data,
             "created_at": req.created_at.isoformat() if req.created_at else None,
             "expires_at": req.expires_at.isoformat() if req.expires_at else None,
@@ -2249,28 +2317,81 @@ def list_all_requests(request):
     })
 
 
-def urgent_request_detail(request, request_id):
-    """Return a single urgent request as JSON."""
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
+from django.contrib.gis.geos import Point
+
+from .models import UrgentRequest, RequestComment
+import json
+
+
+@csrf_exempt
+@login_required
+@require_http_methods(["GET"])
+def get_request_by_id(request, request_id):
     try:
-        obj = UrgentRequest.objects.get(id=request_id, is_active=True)
+        urgent_request = (
+            UrgentRequest.objects
+            .select_related("user")
+            .prefetch_related("images")
+            .get(id=request_id)
+        )
+
+        coords = (
+            list(urgent_request.location.coords)
+            if urgent_request.location else [27.5766, 47.1585]
+        )
+
+        images = [
+            request.build_absolute_uri(img.image.url)
+            for img in urgent_request.images.all()
+        ]
+
+        data = {
+            "id": urgent_request.id,
+            "user": urgent_request.user.username,
+            "user_id": urgent_request.user.id,
+            "user_avatar": request.build_absolute_uri(
+                urgent_request.user.profile_picture.url
+            ) if urgent_request.user.profile_picture else None,
+
+            "title": urgent_request.title,
+            "description": urgent_request.description,
+            "category": urgent_request.category,
+            "images": images,
+
+            "max_price": float(urgent_request.max_price) if urgent_request.max_price else None,
+            "currency": urgent_request.currencyType,
+            "location": coords,
+
+            "is_active": urgent_request.is_active,
+            "is_approved": urgent_request.is_approved,
+            "is_flagged": urgent_request.is_flagged,
+            "toxicity_score": urgent_request.toxicity_score,
+            "timestamp": urgent_request.created_at.strftime("%d %b %Y, %H:%M"),
+
+
+            "expires_at": urgent_request.expires_at.strftime("%d %b %Y, %H:%M") if urgent_request.expires_at else None,
+        }
+
+        return JsonResponse({
+            "success": True,
+            "request": data
+        })
+
     except UrgentRequest.DoesNotExist:
-        return JsonResponse({"success": False, "error": "Urgent request not found"}, status=404)
+        return JsonResponse({
+            "success": False,
+            "error": "Request not found"
+        }, status=404)
 
-
-
-    data = {
-        "id": obj.id,
-        "user_id": obj.user.id,
-        "user": obj.user.username,
-        "title": obj.title,
-        "description": obj.description,
-        "category": obj.category,
-        "max_price": float(obj.max_price) if obj.max_price else None,
-        "location": [obj.location.x, obj.location.y] if obj.location else None,
-        "created_at": obj.created_at.isoformat(),
-        "expires_at": obj.expires_at.isoformat() if obj.expires_at else None,
-    }
-    return JsonResponse({"success": True, "urgent_request": data})
+    except Exception as e:
+        return JsonResponse({
+            "success": False,
+            "error": str(e)
+        }, status=400)
 
 
 
@@ -2480,3 +2601,46 @@ def flagged_posts(request):
         }
     })
 
+
+@login_required
+@require_http_methods(["DELETE"])
+def delete_pulse(request, id):
+    if not request.user.is_superuser:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    try:
+        pulse = Pulse.objects.get(id=id)
+        pulse.delete()
+        return JsonResponse({"message": "Pulse deleted successfully"})
+    except Pulse.DoesNotExist:
+        return JsonResponse({"error": "Pulse not found"}, status=404)
+
+
+# 🔴 DELETE ALERT
+@login_required
+@require_http_methods(["DELETE"])
+def delete_alert(request, id):
+    if not request.user.is_superuser:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    try:
+        alert = Alert.objects.get(id=id)
+        alert.delete()
+        return JsonResponse({"message": "Alert deleted successfully"})
+    except Alert.DoesNotExist:
+        return JsonResponse({"error": "Alert not found"}, status=404)
+
+
+# 🔴 DELETE URGENT REQUEST
+@login_required
+@require_http_methods(["DELETE"])
+def delete_urgent_request(request, id):
+    if not request.user.is_superuser:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    try:
+        urgent = UrgentRequest.objects.get(id=id)
+        urgent.delete()
+        return JsonResponse({"message": "Urgent request deleted successfully"})
+    except UrgentRequest.DoesNotExist:
+        return JsonResponse({"error": "Urgent request not found"}, status=404)
