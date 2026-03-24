@@ -392,6 +392,7 @@
 .nush {
     display: flex;
     justify-content: center;
+    min-height: 100px;
 }
 
 .scrie, .vezi {

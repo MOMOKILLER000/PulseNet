@@ -1,28 +1,13 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Heart, MessageSquare, Star, Send } from "lucide-react";
+import { ArrowLeft, ArrowRight, MessageSquare, Send } from "lucide-react";
 import styles from "../../styles/Pulses_pages/pulseDetails.module.css";
 import Navbar from "../../components/Navbar";
 import { Map, MapMarker, MarkerContent } from "@/components/ui/map";
 import "maplibre-gl/dist/maplibre-gl.css";
-
-import FullCalendar from "@fullcalendar/react";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import timeGridPlugin from "@fullcalendar/timegrid";
-import interactionPlugin from "@fullcalendar/interaction";
 import Loading from "@/components/Loading";
 
-function formatLocation(location) {
-    if (!location) return "Not specified";
-    if (Array.isArray(location)) {
-        return `${location[1].toFixed(4)}°N, ${location[0].toFixed(4)}°E`;
-    }
-    if (location.coordinates) {
-        return `${location.coordinates[1].toFixed(4)}°N, ${location.coordinates[0].toFixed(4)}°E`;
-    }
-    return String(location);
-}
 
 function getLocationCoords(location) {
     const defaultCoords = [27.5766, 47.1585];
@@ -77,25 +62,18 @@ const isoToLocalString = (isoString) => {
     }).format(date);
 };
 
-export default function PulseDetails() {
-    const { type, id } = useParams();
+export default function RequestDetails() {
+    const {  id } = useParams();
     const navigate = useNavigate();
 
-    const [pulse, setPulse] = useState(null);
+    const [request, setRequest] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [index, setIndex] = useState(0);
-    const [favAnim, setFavAnim] = useState(false);
     const mapRef = useRef(null);
-
-    // rating states
-    const [userRating, setUserRating] = useState(0); // will be initialized from backend when available
-    const [hoverRating, setHoverRating] = useState(0);
-    const [isSubmittingRating, setIsSubmittingRating] = useState(false);
 
     // comments/reviews
     const [commentText, setCommentText] = useState("");
-    const [calendarEvents, setCalendarEvents] = useState([]);
 
     // ---------- Comments (lazy) ----------
     const [showComments, setShowComments] = useState(false);
@@ -115,7 +93,7 @@ export default function PulseDetails() {
         setCommentsLoading(true);
         setCommentsError("");
         try {
-            const res = await fetch(`http://localhost:8000/accounts/pulse/comments/${id}/?page=${page}`, {
+            const res = await fetch(`http://localhost:8000/accounts/urgent-requests/comments/${id}/?page=${page}`, {
                 method: "GET",
                 credentials: "include",
                 headers: { "Accept": "application/json" },
@@ -159,7 +137,7 @@ export default function PulseDetails() {
         setIsPosting(true);
         setCommentsError("");
         try {
-            const res = await fetch(`http://localhost:8000/accounts/pulse/comments/${id}/`, {
+            const res = await fetch(`http://localhost:8000/accounts/urgent-requests/comments/${id}/`, {
                 method: "POST",
                 credentials: "include",
                 headers: {
@@ -201,7 +179,7 @@ export default function PulseDetails() {
     const handleDeleteComment = async (commentId) => {
         const csrftoken = getCookie("csrftoken");
         try {
-            const res = await fetch(`http://localhost:8000/accounts/pulse/comments/${commentId}/`, {
+            const res = await fetch(`http://localhost:8000/accounts/urgent-requests/comments/${commentId}/`, {
                 method: "DELETE",
                 credentials: "include",
                 headers: { "X-CSRFToken": csrftoken },
@@ -217,49 +195,14 @@ export default function PulseDetails() {
     // ---------- end comments ----------
 
     // ---------- Rating: submit handler (separate, not inline) ----------
-    const handleSubmitRating = async () => {
-        if (!userRating || userRating < 1 || userRating > 10) {
-            alert("Please select a rating between 1 and 10.");
-            return;
-        }
-        const csrftoken = getCookie("csrftoken");
-        setIsSubmittingRating(true);
-        try {
-            const res = await fetch(`http://localhost:8000/accounts/pulse/ratings/${id}/`, {
-                method: "POST",
-                credentials: "include",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": csrftoken,
-                    "Accept": "application/json",
-                },
-                body: JSON.stringify({ rating: userRating }),
-            });
-            const data = await res.json().catch(() => null);
-            if (!res.ok || !data?.success) {
-                const message = (data && (data.error || data.message)) || `Failed to submit rating (status ${res.status})`;
-                throw new Error(message);
-            }
 
-            // update local pulse info if backend returned rating
-            if (data.rating !== undefined) {
-                setPulse(prev => prev ? ({ ...prev, my_rating: data.rating }) : prev);
-            }
-            alert(`Thanks — you rated ${userRating}/10.`);
-        } catch (err) {
-            console.error("Submit rating error:", err);
-            alert(err.message || "Could not submit rating");
-        } finally {
-            setIsSubmittingRating(false);
-        }
-    };
     // ---------- end rating ----------
 
     useEffect(() => {
         let mounted = true;
         const csrfToken = getCookie("csrftoken");
 
-        fetch(`http://localhost:8000/accounts/pulse/${id}/`, {
+        fetch(`http://localhost:8000/accounts/urgent-request/${id}/`, {
             method: "GET",
             credentials: "include",
             headers: { "X-CSRFToken": csrfToken },
@@ -268,14 +211,8 @@ export default function PulseDetails() {
             .then(data => {
                 if (!mounted) return;
                 if (data.success) {
-                    setPulse(data.pulse);
+                    setRequest(data.request);
                     setIndex(0);
-
-                    // initialize userRating from backend even if it's 0
-                    const backendRating = (data.pulse?.user_rating ?? data.pulse?.my_rating);
-                    if (backendRating !== undefined && backendRating !== null) {
-                        setUserRating(backendRating);
-                    }
                 } else {
                     setError(data.error || "Not found");
                 }
@@ -288,10 +225,10 @@ export default function PulseDetails() {
 
     useEffect(() => {
         const getDetailedAddress = async () => {
-            if (!pulse?.location) return;
+            if (!request?.location) return;
 
             // Get coords regardless of format (Array or GeoJSON)
-            const coords = getLocationCoords(pulse.location);
+            const coords = getLocationCoords(request.location);
             const [lng, lat] = coords;
 
             try {
@@ -325,52 +262,13 @@ export default function PulseDetails() {
         };
 
         getDetailedAddress();
-    }, [pulse?.location]);
+    }, [request?.location]);
 
 
-
-    // === TIMEZONE-FIXED: convert backend UTC ranges to local all-day events ===
-    useEffect(() => {
-        if (!pulse) {
-            setCalendarEvents([]);
-            return;
-        }
-
-        const ranges = pulse.unavailable_ranges ?? pulse.reserved_periods ?? [];
-
-        const events = ranges
-            .map((r, i) => {
-                const startRaw = r.start ?? r.start_date;
-                const endRaw = r.end ?? r.end_date;
-                if (!startRaw || !endRaw) return null;
-
-                // Convert backend UTC ISO -> local YYYY-MM-DD
-                const startLocalDate = utcIsoToLocalDateString(startRaw);
-
-                // Convert end to local, then add 1 day
-                const endDate = new Date(endRaw);
-                endDate.setDate(endDate.getDate() + 1); // add 1 day
-                const endLocalDate = utcIsoToLocalDateString(endDate.toISOString());
-
-                return {
-                    id: `unav-${i}`,
-                    start: startLocalDate,
-                    end: endLocalDate, // FullCalendar end is exclusive
-                    allDay: true,
-                    display: "background",
-                    backgroundColor: "rgba(255,70,70,0.35)",
-                    borderColor: "rgba(255,70,70,0.6)",
-                    extendedProps: { source: "backend" },
-                };
-            })
-            .filter(Boolean);
-
-        setCalendarEvents(events);
-    }, [pulse]);
 
     useEffect(() => {
-        if (!pulse) return;
-        const coords = getLocationCoords(pulse.location);
+        if (!request) return;
+        const coords = getLocationCoords(request.location);
         let mounted = true;
         const ensureMapReady = async () => {
             await new Promise(r => setTimeout(r, 250));
@@ -391,48 +289,20 @@ export default function PulseDetails() {
         };
         ensureMapReady();
         return () => { mounted = false; };
-    }, [pulse]);
+    }, [request]);
 
-    const images = useMemo(() => (pulse && pulse.images ? pulse.images : []), [pulse]);
+    const images = useMemo(() => (request && request.images ? request.images : []), [request]);
     const next = () => { if (images.length) setIndex(i => (i + 1) % images.length); };
     const prev = () => { if (images.length) setIndex(i => (i - 1 + images.length) % images.length); };
 
-    const handleFavorite = async () => {
-        if (!pulse) return;
-        setFavAnim(true);
-        try {
-            const csrfToken = getCookie("csrftoken");
-            const response = await fetch(`http://localhost:8000/accounts/add_to_favorites/${pulse.id}/`, {
-                method: "POST",
-                credentials: "include",
-                headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
-            });
-            const data = await response.json().catch(() => null);
-            if (response.ok && data?.success) setPulse(prev => ({ ...prev, is_favorite: true }));
-        } catch (err) { console.error("Favorite error:", err); }
-        setTimeout(() => setFavAnim(false), 350);
-    };
 
-    const delete_favorite = async () => {
-        if (!pulse) return;
-        try {
-            const csrfToken = getCookie("csrftoken");
-            const response = await fetch(`http://localhost:8000/accounts/delete_from_favorites/${pulse.id}/`, {
-                method: "DELETE",
-                credentials: "include",
-                headers: { "X-CSRFToken": csrfToken },
-            });
-            const data = await response.json().catch(() => null);
-            if (response.ok && data?.success) setPulse(prev => ({ ...prev, is_favorite: false }));
-        } catch (err) { console.error("Delete favorite error:", err); }
-    };
 
     if (loading) return <Loading />
     if (error) return <div className={styles.errorBox}><h2>{error}</h2><button onClick={() => navigate(-1)}>Go Back</button></div>;
-    if (!pulse) return null;
+    if (!request) return null;
 
-    const coords = getLocationCoords(pulse.location);
-    const isService = type === "servicii";
+    const coords = getLocationCoords(request.location);
+
 
     return (
         <div className={styles.body}>
@@ -443,23 +313,24 @@ export default function PulseDetails() {
                         {/* LEFT SIDE */}
                         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className={styles.left}>
                             <div className={styles.header}>
-                                {pulse.user_avatar ? (
-                                    <img src={pulse.user_avatar} alt="avatar" className={styles.avatar} />
+                                {request.user_avatar ? (
+                                    <img src={request.user_avatar} alt="avatar" className={styles.avatar} />
                                 ) : (
-                                    <div className={styles.avatarPlaceholder}>{pulse.user?.[0] ?? '?'}</div>
+                                    <div className={styles.avatarPlaceholder}>{request.user?.[0] ?? '?'}</div>
                                 )}
                                 <div>
-                                    <div className={styles.username}>{pulse.user}</div>
-                                    <div className={styles.timestamp}>{isoToLocalString(pulse.timestamp)}</div>
+                                    <div className={styles.username}>{request.user}</div>
+                                    <div className={styles.timestamp}>{isoToLocalString(request.timestamp)}</div>
                                 </div>
                             </div>
 
-                            <h1 className={styles.title}>{pulse.name}</h1>
-                            <p className={styles.description}>{pulse.description}</p>
+                            <h1 className={styles.title}>{request.title}</h1>
+                            <p className={styles.description}>{request.description}</p>
 
                             <div className={styles.badges}>
-                                <div className={styles.typeBadge}>{isService ? "Serviciu" : "Obiect"}</div>
-                                <div className={styles.priceBadge}>{pulse.price} {pulse.currency}</div>
+                                <div className={styles.priceBadge}>
+                                    Max Price: {request.max_price} {request.currency}
+                                </div>
                             </div>
 
                             {/* IMAGE CAROUSEL */}
@@ -481,59 +352,21 @@ export default function PulseDetails() {
 
                             {/* INFO GRID */}
                             <div className={styles.infoGrid}>
-                                <div><span>Posted</span><strong>{isoToLocalString(pulse.timestamp)}</strong></div>
+                                <div><span>Posted</span><strong>{isoToLocalString(request.timestamp)}</strong></div>
                                 <div><span>Location</span><strong>{formattedAddress}</strong></div>
-                                <div><span>Condition</span><strong>{pulse.condition || "N/A"}</strong></div>
                             </div>
 
                             {/* --- RATING & COMMENT SECTION (1-10 Scale) --- */}
                             <div style={{ marginTop: '40px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
                                 <h3 style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <span>Recenzii și Rating</span>
+                                    <span>Recenzii</span>
                                     <button onClick={handleToggleComments} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#007bff' }}>
-                                        {showComments ? "Hide comments" : `Show comments${pulse.comments_count ? ` (${pulse.comments_count})` : ""}`}
+                                        {showComments ? "Hide comments" : `Show comments${request.comments_count ? ` (${request.comments_count})` : ""}`}
                                     </button>
                                 </h3>
 
                                 {/* 1-10 Star Picker + Submit Rating */}
                                 <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', marginBottom: '20px' }}>
-                                    <p style={{ marginBottom: '10px', fontSize: '14px', fontWeight: '600' }}>
-                                        Acordă o notă (1-10): {userRating > 0 ? userRating : ''}
-                                    </p>
-
-                                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '15px' }}>
-                                        {[...Array(10)].map((_, i) => {
-                                            const ratingValue = i + 1;
-                                            return (
-                                                <Star
-                                                    key={ratingValue}
-                                                    size={22}
-                                                    style={{ cursor: 'pointer', transition: '0.2s' }}
-                                                    fill={ratingValue <= (hoverRating || userRating) ? "#FFC107" : "none"}
-                                                    stroke={ratingValue <= (hoverRating || userRating) ? "#FFC107" : "#ccc"}
-                                                    onMouseEnter={() => setHoverRating(ratingValue)}
-                                                    onMouseLeave={() => setHoverRating(0)}
-                                                    onClick={() => setUserRating(ratingValue)}
-                                                />
-                                            );
-                                        })}
-                                    </div>
-
-                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                        <button
-                                            onClick={handleSubmitRating}
-                                            disabled={isSubmittingRating || userRating === 0}
-                                            style={{
-                                                background: isSubmittingRating || userRating === 0 ? '#9bb8ff' : '#007bff',
-                                                color: 'white',
-                                                border: 'none',
-                                                padding: '10px 15px',
-                                                borderRadius: '8px',
-                                                cursor: isSubmittingRating || userRating === 0 ? 'default' : 'pointer'
-                                            }}
-                                        >
-                                            {isSubmittingRating ? "Submitting..." : "Submit Rating"}
-                                        </button>
 
                                         <form onSubmit={handlePostComment} style={{ display: 'flex', gap: '10px', flex: 1 }}>
                                             <input
@@ -553,7 +386,6 @@ export default function PulseDetails() {
                                                 <Send size={18} />
                                             </button>
                                         </form>
-                                    </div>
                                 </div>
 
                                 {/* ------- Comments (lazy-loaded from backend) ------- */}
@@ -622,23 +454,18 @@ export default function PulseDetails() {
                             <motion.aside initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} className={styles.sidebar}>
                                 <div className={styles.sellerCard}>
                                     <h3>Seller</h3>
-                                    <p>{pulse.user}</p>
+                                    <p>{request.user}</p>
                                     <div>
-                                        <button className={styles.contactBtn} onClick={(e) => { e.stopPropagation(); navigate(`/direct-chat/${pulse.user_id}`, {
+                                        <button className={styles.contactBtn} onClick={(e) => { e.stopPropagation(); navigate(`/direct-chat/${request.user_id}`, {
                                             state: {
                                                 fromPulse: true,
                                             }
                                         }); }}>
                                             <MessageSquare size={16} /> Contact
                                         </button>
-                                        <button onClick={() => { pulse.is_favorite ? delete_favorite() : handleFavorite(); }}
-                                                className={`${styles.favoriteBtn} ${pulse.is_favorite ? styles.favoriteActive : styles.favoriteInactive} ${favAnim ? styles.favActive : ""}`}>
-                                            <Heart size={16} fill={pulse.is_favorite ? "currentColor" : "none"} />
-                                            {pulse.is_favorite ? "Favorited" : "Favorite"}
-                                        </button>
                                     </div>
-                                    <button className={styles.actionBtn} onClick={() => navigate(`/transaction/${pulse.id}`)}>
-                                        {isService ? "Book Service" : "Lend Item"}
+                                    <button className={styles.actionBtn} onClick={() => navigate(`/transaction/${request.id}`)}>
+                                        Propose offer
                                     </button>
                                 </div>
                             </motion.aside>
@@ -646,29 +473,11 @@ export default function PulseDetails() {
                             {/* MAP */}
                             <motion.div initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className={styles.mapContainer}>
                                 <div className={styles.mapWrapper} style={{ minHeight: 280, height: 320 }}>
-                                    <Map key={`${coords[0]}-${coords[1]}-${pulse.id}`} ref={mapRef} center={coords} zoom={16}>
+                                    <Map key={`${coords[0]}-${coords[1]}-${request.id}`} ref={mapRef} center={coords} zoom={16}>
                                         <MapMarker longitude={coords[0]} latitude={coords[1]}>
                                             <MarkerContent />
                                         </MapMarker>
                                     </Map>
-                                </div>
-                            </motion.div>
-
-                            {/* CALENDAR */}
-                            <motion.div initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className={styles.calendarContainer} style={{ marginTop: 18 }}>
-                                <h4 style={{ margin: "8px 0" }}>Availability</h4>
-                                <FullCalendar
-                                    key={calendarEvents.length}
-                                    plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                                    initialView="dayGridMonth"
-                                    headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth" }}
-                                    height="auto"
-                                    events={calendarEvents}
-                                    display="background"
-                                />
-                                <div style={{ marginTop: 8, fontSize: 13 }}>
-                                    <span style={{ display: "inline-block", width: 12, height: 12, background: "rgba(255,70,70,0.6)", marginRight: 8, verticalAlign: "middle", borderRadius: 3 }} />
-                                    <span>Unavailable</span>
                                 </div>
                             </motion.div>
                         </div>

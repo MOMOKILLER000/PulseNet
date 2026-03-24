@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import styles from '../../styles/Requests/UrgentRequests.module.css';
 import Navbar from "@/components/Navbar";
+import {useNavigate} from "react-router-dom";
+import Loading from "@/components/Loading";
 
 export default function UrgentRequests() {
     const [requests, setRequests] = useState([]);
@@ -10,6 +12,7 @@ export default function UrgentRequests() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
+    const navigate = useNavigate();
     const fetchDetailedAddress = async (lat, lng) => {
         try {
             const res = await fetch(
@@ -97,6 +100,8 @@ export default function UrgentRequests() {
         });
     };
 
+    if (loading) return <Loading />
+
     return (
         <div className={styles.bodyContainer}>
             <div className={styles.navbarAdjust}>
@@ -113,7 +118,7 @@ export default function UrgentRequests() {
 
             <div className={styles.urgentRequestsGrid}>
                 {requests.map((req) => (
-                    <div className={styles.urgentRequestCard} key={req.id}>
+                    <div className={styles.urgentRequestCard} key={req.id} onClick={() => navigate(`/request/${req.id}`)}>
                         <div className={styles.cardHeader}>
                             {req.images?.length > 0 ? (
                                 <img src={req.images[0]} alt={req.title} className={styles.urgentRequestImage} />
@@ -146,7 +151,6 @@ export default function UrgentRequests() {
                                     {req.max_price ? `$${req.max_price}` : "Negotiable"}
                                 </span>
                             </div>
-                            <button className={styles.actionBtn}>Help Out</button>
                         </div>
                     </div>
                 ))}
