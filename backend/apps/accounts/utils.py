@@ -11,6 +11,7 @@ from sentence_transformers import SentenceTransformer
 from transformers import pipeline
 from PIL import Image
 from pgvector.django import CosineDistance
+from django.db.models import Avg
 # Import your models here - update paths as necessary
 from .models import UrgentRequest, User, Notification, AlertImage
 
@@ -200,6 +201,16 @@ def calculate_trust_score(user):
 
         if pulse.is_available:
             score += 3
+
+        # ⭐ NEW: ratings impact
+        avg_rating = pulse.pulserating_set.aggregate(avg=Avg("rating"))["avg"]
+
+        if avg_rating:
+            # Normalize around 5 (neutral midpoint if rating is 1–10)
+            normalized = avg_rating - 5
+
+            # Weight it (important: don’t make it too strong)
+            score += normalized * 2  # tweakable
 
     # URGENT REQUESTS
     requests = user.urgent_requests.all()

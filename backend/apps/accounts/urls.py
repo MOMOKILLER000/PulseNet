@@ -15,6 +15,7 @@ urlpatterns = [
     path('profile/', views.profile, name='profile'),
     path('update_profile/', views.update_profile, name='update_profile'),
     path('update_location/', views.update_location, name='update_location'),
+    path('become_verified/', views.become_verified, name='become_verified'),
 
     # Profile Pictures
     path('upload_profile_picture/', views.upload_profile_picture, name='upload_profile_picture'),
@@ -68,6 +69,10 @@ urlpatterns = [
     path("urgent-request/<int:request_id>/", views.get_request_by_id, name="urgent_request_detail"),
     path('urgent-requests/comments/<int:request_id>/', views.get_request_comments, name='get_request_comments'),
     path("list-all-requests/", views.list_all_requests, name="list_all_requests"),
+    path("create_request_offer/", views.create_request_offer, name="create_request_offer"),
+    path('request-offers/received/', views.get_user_request_offers, name='get_user_request_offers'),
+    path('request-offers/<int:offer_id>/', views.modify_offer_status, name='modify_offer_status'),
+    path('own-request-offers/', views.get_my_offers, name='own-request-offers'),
 
     #Admin urls
     path('admin_alert_reports/', views.admin_alert_reports, name='admin_reports'),

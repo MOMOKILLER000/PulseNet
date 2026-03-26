@@ -14,7 +14,7 @@ from sentence_transformers import SentenceTransformer
 
 # Import your models and logic
 from .models import Alert, UrgentRequest, User, Notification
-from .utils import find_heroes_for_urgent_requests, process_pet_image_and_find_matches
+from .utils import find_heroes_for_urgent_requests, process_pet_image_and_find_matches, calculate_trust_score
 
 # Lazy loader for the model to keep worker memory clean
 _model = None
@@ -275,3 +275,19 @@ def fetch_severe_weather_alerts():
         except Exception as e:
             print(f"Error fetching weather for cluster {lat}, {lon}: {e}")
 
+
+@shared_task
+def update_user_trust_score_task(user_id):
+    try:
+        user = User.objects.get(id=user_id)
+
+        score = calculate_trust_score(user)
+
+        # ✅ clamp
+        score = max(-500, min(score, 500))
+
+        user.trust_score = score
+        user.save(update_fields=["trust_score"])
+
+    except User.DoesNotExist:
+        pass

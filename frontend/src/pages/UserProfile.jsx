@@ -152,9 +152,11 @@ export default function Profile() {
 
                                 </div>
 
-                                <div className={styles.trustBadge}>
+                                <div className={`${styles.trustBadge} ${styles["comments" + user.trustLevel]}`}>
                                     <span className={styles.trustIcon}>🛡️</span>
-                                    <span className={styles.trustValue}>{user.trustScore}% Trust</span>
+                                    <span className={styles.trustValue}>
+                                {user.trustLevel} • {user.trustScore}
+                                </span>
                                 </div>
                             </div>
 

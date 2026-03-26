@@ -59,6 +59,27 @@ class User(AbstractUser):
     def is_banned(self):
         return bool(self.banned_until and timezone.now() < self.banned_until)
 
+    @property
+    def trust_level(self):
+        score = self.trust_score
+
+        if score < -100:
+            return "Dangerous"
+        elif score < 0:
+            return "Risky"
+        elif score < 25:
+            return "Observer"
+        elif score < 75:
+            return "Active"
+        elif score < 150:
+            return "Trusted"
+        elif score < 250:
+            return "Proven"
+        elif score < 400:
+            return "Elite"
+        else:
+            return "Legend"
+
     #transform JSON list in an embedded vector
     def get_skills_text(self):
         if not self.skills:
@@ -96,6 +117,7 @@ class Pulse(models.Model):
     is_approved = models.BooleanField(default=True)
     is_flagged = models.BooleanField(default=False)
     toxicity_score = models.FloatField(default=0.0)
+    trust_required = models.BooleanField(default=False)
 
     #category in cazu in care adaugam categorii de obiecte pe viitor
     category = models.CharField(max_length=150, blank=True)
@@ -559,6 +581,7 @@ class UrgentRequest(models.Model):
     is_approved = models.BooleanField(default=True)
     is_flagged = models.BooleanField(default=False)
     toxicity_score = models.FloatField(default=0.0)
+    trust_required = models.BooleanField(default=False)
 
     category = models.CharField(max_length=150, blank=True)
 
@@ -582,6 +605,43 @@ class UrgentRequest(models.Model):
 
     def __str__(self):
         return f"UrgentRequest by {self.user.username} ({self.title})"
+
+class UrgentRequestOffer(models.Model):
+    request = models.ForeignKey(
+        UrgentRequest,
+        on_delete=models.CASCADE,
+        related_name="offer"
+    )
+
+    proposer = models.ForeignKey(
+        "User",
+        on_delete=models.CASCADE,
+        related_name="request_offers"
+    )
+
+    total_price = models.DecimalField(max_digits=12, decimal_places=2)
+    initial_price = models.DecimalField(max_digits=12, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_offer_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
+
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("confirmed", "Confirmed"),
+        ("declined", "Declined"),
+        ("completed", "Completed"),
+    ]
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="pending"
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.request.title} reserved by {self.proposer}"
 
 
 class UrgentRequestImage(models.Model):

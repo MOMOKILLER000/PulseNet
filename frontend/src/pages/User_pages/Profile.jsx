@@ -120,6 +120,14 @@ export default function Profile() {
 
     const [rentalProposals, setRentalProposals] = useState([]);
     const [proposalsLoading, setProposalsLoading] = useState(true);
+
+
+    const [receivedRequestOffers, setReceivedRequestOffers] = useState([]);
+    const [receivedOffersLoading, setReceivedOffersLoading] = useState(true);
+
+// Offers you SENT to others (You are the Proposer)
+    const [sentRequestOffers, setSentRequestOffers] = useState([]);
+    const [sentOffersLoading, setSentOffersLoading] = useState(true);
     // counteroffer modal state
     const [counterModal, setCounterModal] = useState({
         show: false,
@@ -132,9 +140,28 @@ export default function Profile() {
         id: null,
     });
 
+
     // accept/decline modals
     const [acceptModal, setAcceptModal] = useState({ show: false, id: null });
     const [declineModal, setDeclineModal] = useState({ show: false, id: null });
+
+    const [counterOfferModal, setCounterOfferModal] = useState({
+        show: false,
+        id: null,
+        price: "",
+    });
+
+    const [deleteOfferModal, setDeleteOfferModal] = useState({
+        show: false,
+        id: null,
+    });
+
+
+    // accept/decline modals
+    const [acceptOfferModal, setAcceptOfferModal] = useState({ show: false, id: null });
+    const [declineOfferModal, setDeclineOfferModal] = useState({ show: false, id: null });
+
+    const [verifiedModal, setVerifiedModal] = useState(false);
 
     const openDeleteModal = (proposal) => {
         setDeleteProposalModal({ show: true, id: proposal.id });
@@ -257,6 +284,40 @@ export default function Profile() {
         };
 
         fetchData();
+    }, []);
+
+    useEffect(() => {
+        const fetchOffers = async () => {
+            try {
+                // Received Offers
+                const resReceived = await fetch("http://localhost:8000/accounts/request-offers/received/", {
+                    method: "GET",
+                    credentials: "include",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCookie("csrftoken"),
+                    },});
+                const dataReceived = await resReceived.json();
+                setReceivedRequestOffers(dataReceived);
+
+                // Sent Offers
+                const resSent = await fetch("http://localhost:8000/accounts/own-request-offers/", {
+                    method: "GET",
+                    credentials: "include",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCookie("csrftoken"),
+                    },});
+                const dataSent = await resSent.json();
+                setSentRequestOffers(dataSent);
+            } catch (err) {
+                console.error("Error fetching request offers:", err);
+            } finally {
+                setReceivedOffersLoading(false);
+                setSentOffersLoading(false);
+            }
+        };
+        fetchOffers();
     }, []);
 
     const isUserSleeping = () => {
@@ -500,6 +561,25 @@ export default function Profile() {
         }
     }
 
+    const becomeVerified = async (id) => {
+        const res = await fetch(
+            `http://localhost:8000/accounts/become_verified/`,
+            {
+                method: "PUT",
+                headers: { "X-CSRFToken": getCookie("csrftoken") },
+                credentials: "include",
+            }
+        );
+
+        if (!res.ok) {
+            alert("An error occurred. Please try again");
+            return;
+        }
+
+        setVerifiedModal(true);
+        setUser((prev) => ({ ...prev,  isVerified: true }));
+    }
+
     const openDeletePulseModal = (id) => {
         setDeletePulseModal({ show: true, id });
     };
@@ -712,6 +792,152 @@ export default function Profile() {
 
     // --- end rental offers actions ---
 
+    const openCounterOfferModal = (offer) => {
+        setCounterOfferModal({
+            show: true,
+            id: offer.id,
+            price: offer.total_price != null ? String(offer.total_price) : "",
+        });
+    };
+
+    const closeCounterOfferModal = () => {
+        setCounterOfferModal({ show: false, id: null, price: "" });
+    }
+
+    const handleCounterOfferPriceChange = (e) => {
+        setCounterOfferModal((prev) => ({ ...prev, price: e.target.value }));
+    };
+
+    const updateReceivedRequestOfferInState = (id, updatedFields) => {
+        setReceivedRequestOffers(prev => prev.map(o => o.id === id ? { ...o, ...updatedFields } : o));
+    };
+
+    const updateSentRequestOfferInState = (id, updatedFields) => {
+        setSentRequestOffers(prev => prev.map(o => o.id === id ? { ...o, ...updatedFields } : o));
+    };
+
+    const handleAcceptRequestOffer = async (id) => {
+        const isSentByMe = sentRequestOffers.some((o) => o.id === id);
+        // Use the new endpoint created in urls.py
+        const url = `http://localhost:8000/accounts/request-offers/${id}/`;
+
+        try {
+            const res = await fetch(url, {
+                method: "PATCH",
+                credentials: "include",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken"),
+                },
+                body: JSON.stringify({ status: "confirmed" }),
+            });
+            if (res.ok) {
+                const updated = await res.json();
+                if (isSentByMe) {
+                    updateSentRequestOfferInState(id, { status: updated.status });
+                } else {
+                    updateReceivedRequestOfferInState(id, { status: updated.status });
+                }
+            } else {
+                alert("Error accepting offer.");
+            }
+        } catch (err) {
+            console.error("Network error:", err);
+        }
+    };
+
+// --- DECLINE OFFER ---
+    const handleDeclineRequestOffer = async (id) => {
+        const isSentByMe = sentRequestOffers.some((o) => o.id === id);
+        const url = `http://localhost:8000/accounts/request-offers/${id}/`;
+
+        try {
+            const res = await fetch(url, {
+                method: "PATCH",
+                credentials: "include",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken"),
+                },
+                body: JSON.stringify({ status: "declined" }),
+            });
+            if (res.ok) {
+                const updated = await res.json();
+                if (isSentByMe) {
+                    updateSentRequestOfferInState(id, { status: updated.status });
+                } else {
+                    updateReceivedRequestOfferInState(id, { status: updated.status });
+                }
+            }
+        } catch (err) {
+            console.error("Network error:", err);
+        }
+    };
+
+// --- SUBMIT COUNTEROFFER ---
+    const handleSubmitRequestCounter = async () => {
+        const { id, price } = counterOfferModal; // Reuses your existing counterModal state
+        const parsed = parseFloat(price);
+
+        if (Number.isNaN(parsed) || parsed <= 0) {
+            alert("Enter a valid price.");
+            return;
+        }
+
+        const isSentByMe = sentRequestOffers.some((o) => o.id === id);
+        try {
+            const res = await fetch(`http://localhost:8000/accounts/request-offers/${id}/`, {
+                method: "PATCH",
+                credentials: "include",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken"),
+                },
+                body: JSON.stringify({ total_price: parsed }),
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                const updatePayload = {
+                    total_price: data.total_price,
+                    status: data.status,
+                    last_offer_by: data.last_offer_by
+                };
+
+                if (isSentByMe) {
+                    updateSentRequestOfferInState(id, updatePayload);
+                } else {
+                    updateReceivedRequestOfferInState(id, updatePayload);
+                }
+                closeCounterOfferModal();
+            } else {
+                // This will catch the "Offer cannot exceed target budget" error from Django
+                alert(data.error || "Error sending counteroffer.");
+            }
+        } catch (err) {
+            console.error("Network error:", err);
+        }
+    };
+
+// --- DELETE / CANCEL OFFER ---
+    const handleDeleteRequestOffer = async (id) => {
+        try {
+            const response = await fetch(`http://localhost:8000/accounts/request-offers/${id}/`, {
+                method: "DELETE",
+                headers: { "X-CSRFToken": getCookie("csrftoken") },
+                credentials: "include",
+            });
+
+            if (response.ok) {
+                setSentRequestOffers((prev) => prev.filter((o) => o.id !== id));
+            } else {
+                alert("Could not delete offer.");
+            }
+        } catch (err) {
+            console.error("Network error:", err);
+        }
+    };
+
     if (loading) return <Loading />;
     if (!user) return <div className={styles.error}>Could not load user data.</div>;
 
@@ -771,9 +997,11 @@ export default function Profile() {
                                 </div>
 
 
-                                <div className={styles.trustBadge}>
+                                <div className={`${styles.trustBadge} ${styles["comments" + user.trustLevel]}`}>
                                     <span className={styles.trustIcon}>🛡️</span>
-                                    <span className={styles.trustValue}>{user.trustScore}% Trust</span>
+                                    <span className={styles.trustValue}>
+                                {user.trustLevel} • {user.trustScore}
+                                </span>
                                 </div>
 
 
@@ -958,7 +1186,12 @@ export default function Profile() {
                                             <h1 className={styles.title}>
                                                 {user.firstName} {user.lastName}
                                             </h1>
-                                            {user.isVerified && <span className={styles.verified}>✓ Verified</span>}
+                                            {user.isVerified && <span className={styles.verified}>✓ Verified neighbour</span>}
+                                            {!user.isVerified && user.totalPosts > 15 &&
+                                                user.trustScore > 200 &&
+                                                ((new Date() - new Date(user.date_joined)) / (1000 * 60 * 60 * 24 * 30) >= 3) && (
+                                                    <button className={styles.askVerified} onClick={() => becomeVerified(user.id)}>Become a verified neighbour</button>
+                                                )}
                                         </div>
 
                                         <p className={styles.username}>
@@ -1427,6 +1660,153 @@ export default function Profile() {
                             </div>
                         </div>
                     </div>
+
+                    <div className={styles.contentArea}>
+                        <div className={styles.card}>
+                            <div className={styles.pulsesHeader}>
+                                <h2 className={styles.sectionTitle}>Oferte pentru solicitările mele</h2>
+                                <p className={styles.sectionSubtitle}>
+                                    Utilizatorii s-au oferit să te ajute — poți accepta oferta lor, refuza sau negocia prețul.
+                                </p>
+                            </div>
+
+                            <div className={styles.offersList}>
+                                {receivedOffersLoading && <p>Se încarcă oferte...</p>}
+                                {!receivedOffersLoading && receivedRequestOffers.length === 0 && (
+                                    <p className={styles.emptyState}>Momentan nu ai primit nicio ofertă pentru cererile tale urgente.</p>
+                                )}
+
+                                {receivedRequestOffers.map((offer) => (
+                                    <div key={offer.id} className={styles.offerCard}>
+                                        <div className={styles.offerLeft}>
+                                            <div className={styles.offerPulseTitle}>{offer.request_title || "Solicitare fără titlu"}</div>
+                                            <div className={styles.offerMeta}>
+                                                <div>
+                                                    De la: <strong>@{offer.proposer}</strong>
+                                                </div>
+                                                <div>
+                                                    Trimisă la: <strong>{new Date(offer.created_at).toLocaleDateString('ro-RO')}</strong>
+                                                </div>
+                                                <div>
+                                                    Preț solicitat:{" "}
+                                                    <strong>{formatCurrency(offer.total_price, "lei")}</strong>
+                                                </div>
+                                                {offer.total_price !== offer.initial_price && (
+                                                    <div>
+                                                        Prima ofertă:{" "}
+                                                        <strong>{formatCurrency(offer.initial_price, "lei")}</strong>
+                                                    </div>
+                                                )}
+                                                <div>Status: <strong>{offer.status}</strong></div>
+                                            </div>
+                                        </div>
+
+                                        <div className={styles.offerActions}>
+                                            {offer.status === "pending" && offer.last_offer_by !== user.id ? (
+                                                <>
+                                                    <button onClick={() => handleAcceptRequestOffer(offer.id)} className={styles.acceptBtn}>
+                                                        Acceptă
+                                                    </button>
+                                                    <button onClick={() => handleDeclineRequestOffer(offer.id)} className={styles.rejectBtn}>
+                                                        Refuză
+                                                    </button>
+                                                    <button onClick={() => openCounterOfferModal(offer)} className={styles.counterBtn}>
+                                                        Contraofertă
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <div className={styles.smallNote}>
+                                                    {offer.status === "confirmed" && "Ofertă acceptată"}
+                                                    {offer.status === "declined" && "Ofertă refuzată"}
+                                                    {offer.status === "pending" && offer.last_offer_by === user.id && "Așteaptă răspuns la contraofertă"}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className={styles.contentArea}>
+                        <div className={styles.card}>
+                            <div className={styles.pulsesHeader}>
+                                <h2 className={styles.sectionTitle}>Ofertele mele de ajutor</h2>
+                                <p className={styles.sectionSubtitle}>
+                                    Aici vezi toate ofertele pe care le-ai trimis pentru a ajuta alți utilizatori.
+                                </p>
+                            </div>
+
+                            <div className={styles.offersList}>
+                                {sentOffersLoading && <p>Se încarcă propunerile...</p>}
+                                {!sentOffersLoading && sentRequestOffers.length === 0 && (
+                                    <p className={styles.emptyState}>Nu ai trimis încă nicio ofertă de ajutor.</p>
+                                )}
+
+                                {sentRequestOffers.map((proposal) => (
+                                    <div key={proposal.id} className={styles.offerCard}>
+                                        <div className={styles.offerLeft}>
+                                            <div className={styles.offerPulseTitle}>{proposal.request_title}</div>
+                                            <div className={styles.offerMeta}>
+                                                <div>
+                                                    Status: <strong>{proposal.status}</strong>
+                                                </div>
+                                                <div>
+                                                    Preț propus: <strong>{formatCurrency(proposal.total_price, "lei")}</strong>
+                                                </div>
+                                                {proposal.initial_price && proposal.initial_price !== proposal.total_price && (
+                                                    <div>
+                                                        Preț inițial: <strong>{formatCurrency(proposal.initial_price, "lei")}</strong>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className={styles.offerActions}>
+                                            {/* Option to cancel if still pending and you made the last move */}
+                                            {proposal.status === "pending" && (
+                                                <button
+                                                    onClick={() => handleDeleteRequestOffer(proposal.id)}
+                                                    className={styles.rejectBtn}
+                                                >
+                                                    Retrage oferta
+                                                </button>
+                                            )}
+
+                                            {/* If the Requester sent a counteroffer, you see these options */}
+                                            {proposal.status === "pending" &&
+                                                proposal.total_price !== proposal.initial_price &&
+                                                proposal.last_offer_by !== user.id && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleAcceptRequestOffer(proposal.id)}
+                                                            className={styles.acceptBtn}
+                                                            style={{ marginLeft: "8px" }}
+                                                        >
+                                                            Acceptă prețul nou
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openCounterOfferModal(proposal)}
+                                                            className={styles.counterBtn}
+                                                            style={{ marginLeft: "8px" }}
+                                                        >
+                                                            Negociază
+                                                        </button>
+                                                    </>
+                                                )}
+
+                                            {proposal.status === "confirmed" && (
+                                                <div className={styles.smallNote}>Confirmat - Poți începe lucrul!</div>
+                                            )}
+                                            {proposal.status === "declined" && (
+                                                <div className={styles.smallNote}>Oferta a fost respinsă</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Delete Profile Picture Modal */}
@@ -1471,6 +1851,34 @@ export default function Profile() {
                                     Anulează
                                 </button>
                                 <button onClick={handleSubmitCounter} className={styles.saveButton}>
+                                    Trimite contraofertă
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {counterOfferModal.show && (
+                    <div className={styles.modalOverlay}>
+                        <div className={styles.modal}>
+                            <h3 className={styles.modalTitle}>Trimite contraofertă</h3>
+                            <p className={styles.modalText}>Introdu noul preț total (valoare numerică, ex: 150.00):</p>
+                            <div className={styles.inputGroup}>
+                                <label className={styles.inputLabel}>Preț total</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={counterOfferModal.price}
+                                    onChange={handleCounterOfferPriceChange}
+                                    className={styles.editInput}
+                                />
+                            </div>
+                            <div className={styles.modalActions}>
+                                <button onClick={closeCounterOfferModal} className={styles.modalCancel}>
+                                    Anulează
+                                </button>
+                                <button onClick={handleSubmitRequestCounter} className={styles.saveButton}>
                                     Trimite contraofertă
                                 </button>
                             </div>
@@ -1553,6 +1961,35 @@ export default function Profile() {
                                     className={styles.modalDelete}
                                 >
                                     Refuză
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {verifiedModal && (
+                    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+                        <div className="bg-white rounded-xl shadow-lg p-6 w-80 max-w-sm relative">
+                            {/* Close button */}
+                            <button
+                                onClick={() => setVerifiedModal(false)}
+                                className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+                            >
+                                ✕
+                            </button>
+
+                            {/* Modal content */}
+                            <div className="flex flex-col items-center text-center">
+                                <span className="text-4xl mb-4">🎉</span>
+                                <h2 className="text-xl font-bold mb-2">Congratulations!</h2>
+                                <p className="text-gray-600 mb-4">
+                                    You are now a verified neighbour. Enjoy your perks!
+                                </p>
+                                <button
+                                    onClick={() => setVerifiedModal(false)}
+                                    className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full transition-colors"
+                                >
+                                    Close
                                 </button>
                             </div>
                         </div>

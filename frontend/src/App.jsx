@@ -26,7 +26,7 @@ const CreateRequest = React.lazy(() => import('./pages/Requests/CreateRequest.js
 const Admin = React.lazy(()=> import('./pages/Admin.jsx'));
 const RequestDetails = React.lazy(()=> import('./pages/Requests/RequestDetails.jsx'));
 const Pulses = React.lazy(()=> import('./pages/Pulses_pages/Pulses.jsx'));
-
+const RequestOffer = React.lazy(() => import('./pages/Requests/RequestOffer'));
 const NotificationHandler = ({ currentUser }) => {
     const location = useLocation();
     const navigate = useNavigate();
@@ -358,6 +358,7 @@ function App() {
                     <Route path="/urgent-requests" element={<UrgentRequests />} />
                     <Route path="/create-request" element={<ProtectedRoute><CreateRequest /></ProtectedRoute>} />
                     <Route path="/request/:id" element={<ProtectedRoute><RequestDetails /></ProtectedRoute>} />
+                    <Route path="/offer/:requestId" element={<ProtectedRoute><RequestOffer /></ProtectedRoute>} />
                     <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
             </Suspense>

@@ -408,7 +408,11 @@ export default function PulseTransaction() {
                                 <img src={`https://ui-avatars.com/api/?name=${pulse.user}&background=random`} alt="Seller" className={styles.avatar} />
                                 <div>
                                     <p className={styles.sellerName}>Hosted by <strong>@{pulse.user}</strong></p>
-                                    <button className={styles.textBtn} onClick={() => navigate(`/direct-chat/${pulse.user_id}`)}>
+                                    <button className={styles.textBtn} onClick={(e) => { e.stopPropagation(); navigate(`/direct-chat/${pulse.user_id}`, {
+                                        state: {
+                                            fromPulse: true,
+                                        }
+                                    }); }}>
                                         <MessageSquare size={14} /> Contact Seller
                                     </button>
                                 </div>

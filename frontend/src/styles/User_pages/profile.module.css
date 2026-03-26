@@ -82,8 +82,45 @@
     @apply w-32 h-32 sm:w-40 sm:h-40 rounded-full bg-slate-200 border-4 border-slate-50 shadow-inner bg-cover bg-center;
 }
 
+/* Base badge */
 .trustBadge {
-    @apply flex items-center gap-2 bg-indigo-50 border border-indigo-100 px-4 py-2 rounded-full shadow-sm;
+    @apply inline-flex items-center gap-2 px-3 py-2 rounded-full font-bold text-[13px] text-white shadow-md capitalize;
+}
+
+/* Variants */
+.commentsExplorer {
+    @apply bg-gray-400;
+}
+
+.commentsActive {
+    @apply bg-blue-500;
+}
+
+.commentsTrusted {
+    @apply bg-green-500;
+}
+
+.commentsObserver{
+    @apply bg-red-400
+}
+.commentsProven {
+    @apply bg-teal-500;
+}
+
+.commentsElite {
+    @apply bg-gradient-to-tr from-purple-700 to-purple-500;
+}
+
+.commentsLegend {
+    @apply bg-gradient-to-tr from-yellow-500 to-yellow-300 text-slate-800;
+}
+
+.commentsRisky {
+    @apply bg-orange-500;
+}
+
+.commentsDangerous {
+    @apply bg-red-500;
 }
 
 .trustIcon {
@@ -91,7 +128,7 @@
 }
 
 .trustValue {
-    @apply text-sm font-bold text-indigo-700 tracking-wide;
+    @apply text-sm font-bold tracking-wide;
 }
 
 /* PROFILE INFO */
@@ -147,6 +184,11 @@
 
 .verified {
     @apply inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700;
+}
+
+.askVerified {
+    @apply inline-flex items-center mt-2 ml-1 relative bg-yellow-400 px-2 py-1 rounded-full
+    hover:bg-yellow-500 transition-colors duration-200 cursor-pointer;
 }
 
 .username {
