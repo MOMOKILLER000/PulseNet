@@ -308,6 +308,16 @@ export default function RequestDetails() {
         <div className={styles.body}>
             <div className={styles.mainContainer}>
                 <Navbar />
+                {/* Warning banner */}
+                {request.trustLevel === "Dangerous" || request.trustLevel === "Scary" ? (
+                    <div className="bg-red-600 text-white px-4 py-2 rounded-md mb-4 flex items-center gap-2 shadow-md">
+                        <span>⚠️</span>
+                        <span>
+            Warning: This user has a low trust score.
+            Interact with caution.
+        </span>
+                    </div>
+                ) : null}
                 <div className={styles.page}>
                     <div className={styles.container}>
                         {/* LEFT SIDE */}
@@ -354,6 +364,7 @@ export default function RequestDetails() {
                             <div className={styles.infoGrid}>
                                 <div><span>Posted</span><strong>{isoToLocalString(request.timestamp)}</strong></div>
                                 <div><span>Location</span><strong>{formattedAddress}</strong></div>
+                                <div><span>Available until</span><strong>{isoToLocalString(request.expires_at)}</strong></div>
                             </div>
 
                             {/* --- RATING & COMMENT SECTION (1-10 Scale) --- */}
@@ -464,9 +475,18 @@ export default function RequestDetails() {
                                             <MessageSquare size={16} /> Contact
                                         </button>
                                     </div>
-                                    <button className={styles.actionBtn} onClick={() => navigate(`/transaction/${request.id}`)}>
-                                        Propose offer
-                                    </button>
+                                    {(request.has_trust_access || !request.trustRequired) ? (
+                                        <button
+                                            className={styles.actionBtn}
+                                            onClick={() => navigate(`/offer/${request.id}`)}
+                                        >
+                                            Propose offer
+                                        </button>
+                                    ) : (
+                                        <div className={styles.lockedNotice}>
+                                            🔒 You need a verified account with enough trust to access this
+                                        </div>
+                                    )}
                                 </div>
                             </motion.aside>
 

@@ -438,6 +438,15 @@ export default function PulseDetails() {
         <div className={styles.body}>
             <div className={styles.mainContainer}>
                 <Navbar />
+                {pulse.trustLevel === "Dangerous" || pulse.trustLevel === "Scary" ? (
+                    <div className="bg-red-600 text-white px-4 py-2 rounded-md mb-4 flex items-center gap-2 shadow-md">
+                        <span>⚠️</span>
+                        <span>
+            Warning: This user has a low trust score.
+            Interact with caution.
+        </span>
+                    </div>
+                ) : null}
                 <div className={styles.page}>
                     <div className={styles.container}>
                         {/* LEFT SIDE */}
@@ -637,9 +646,18 @@ export default function PulseDetails() {
                                             {pulse.is_favorite ? "Favorited" : "Favorite"}
                                         </button>
                                     </div>
-                                    <button className={styles.actionBtn} onClick={() => navigate(`/transaction/${pulse.id}`)}>
-                                        {isService ? "Book Service" : "Lend Item"}
-                                    </button>
+                                    {(pulse.has_trust_access || !pulse.trustRequired) ? (
+                                        <button
+                                            className={styles.actionBtn}
+                                            onClick={() => navigate(`/transaction/${pulse.id}`)}
+                                        >
+                                            {isService ? "Book Service" : "Lend Item"}
+                                        </button>
+                                    ) : (
+                                        <div className={styles.lockedNotice}>
+                                            🔒 You need a verified account with enough trust to access this
+                                        </div>
+                                    )}
                                 </div>
                             </motion.aside>
 

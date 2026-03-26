@@ -6,7 +6,8 @@ from .models import (
     User, Follow, Friendship, PendingFollow, Pulse, PulseImage,
     Group_Conversation, DirectConversation, FavoritePulse,
     PulseRental, Alert, AlertImage, PulseComment,
-    PulseRating, Notification, UrgentRequest, AlertReport, AlertConfirm, UrgentRequestImage, RequestComment
+    PulseRating, Notification, UrgentRequest, AlertReport, AlertConfirm, UrgentRequestImage, RequestComment,
+    UrgentRequestOffer
 )
 
 class LocationAdminForm(forms.ModelForm):
@@ -36,7 +37,7 @@ class CustomUserAdmin(UserAdmin):
     fieldsets = UserAdmin.fieldsets + (
         ('Custom Profile', {
             'fields': (
-                'profile_picture', 'biography', 'lat', 'lng',
+                'profile_picture', 'biography', 'lat', 'lng', 'trust_score',
                 'visibility_radius', 'quiet_hours_start', 'quiet_hours_end',
                 'online_status', 'private_account',
                 'banned_until'  # <--- Added here
@@ -60,7 +61,7 @@ class PulseAdmin(admin.ModelAdmin):
 @admin.register(Alert)
 class AlertAdmin(admin.ModelAdmin):
     form = LocationAdminForm
-    list_display = ('title', 'user', 'category', 'is_active', 'created_at')
+    list_display = ('title', 'user', 'category', 'is_active', 'created_at', 'is_verified')
     readonly_fields = ('created_at',)  # Make sure Django knows it's read-only
     exclude = ('location',)
 
@@ -73,5 +74,5 @@ admin.site.register([
     Follow, Friendship, PendingFollow, PulseImage,
     Group_Conversation, DirectConversation, FavoritePulse,
     PulseRental, AlertImage, PulseComment,
-    PulseRating, Notification, AlertReport, AlertConfirm, UrgentRequestImage, RequestComment
+    PulseRating, Notification, AlertReport, AlertConfirm, UrgentRequestImage, RequestComment, UrgentRequestOffer
 ])

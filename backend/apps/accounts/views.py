@@ -11,6 +11,8 @@ from django.http import JsonResponse
 from django.contrib.auth import get_user_model, login as django_login,logout as django_logout
 from django.core.exceptions import ValidationError
 import json
+from django.utils import timezone
+from datetime import timedelta
 from django.contrib.auth import get_user_model
 from django.views.decorators.http import require_http_methods, require_POST, require_GET
 from google.auth.transport.requests import Request
@@ -21,18 +23,18 @@ from math import ceil
 from .decorators import api_login_required, check_hate_speech
 from .models import PendingFollow, Pulse, Friendship, Follow, PulseImage, FavoritePulse, PulseRental, Alert, AlertImage, \
     PulseComment, PulseRating, Notification, UrgentRequest, UrgentRequestImage, AlertConfirm, AlertReport, \
-    RequestComment
+    RequestComment, UrgentRequestOffer
 import secrets
 import string
 from django.contrib.auth.hashers import make_password
 from django.db import models
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from django.shortcuts import get_object_or_404
 from django.contrib.gis.db.models.functions import Distance as GisDistance
 from django.core.cache import cache
 import requests
 from .tasks import update_user_embedding, find_heroes_for_urgent_requests, get_model as _get_st_model, \
-    run_hero_search_task, process_pet_match_task
+    run_hero_search_task, process_pet_match_task, update_user_trust_score_task
 from sentence_transformers import util as st_util
 def generate_password(length=12):
     alphabet = string.ascii_letters + string.digits + string.punctuation
@@ -235,8 +237,8 @@ def profile(request):
     if request.method == "GET":
         user = request.user
 
+        # --- Pulses ---
         pulses = Pulse.objects.filter(user=user).prefetch_related('images')
-
         pulses_data = []
         for p in pulses:
             pulses_data.append({
@@ -253,6 +255,13 @@ def profile(request):
                 "timestamp": p.created_at.strftime("%Y-%m-%d %H:%M"),
             })
 
+        # --- Count total posts ---
+        total_posts = (
+            pulses.count() +
+            Alert.objects.filter(user=user).count() +
+            UrgentRequest.objects.filter(user=user).count()
+        )
+
         user_data = {
             "id": user.id,
             "email": user.email,
@@ -266,15 +275,56 @@ def profile(request):
             "quiet_hours_start": user.quiet_hours_start.strftime("%H:%M") if user.quiet_hours_start else None,
             "quiet_hours_end": user.quiet_hours_end.strftime("%H:%M") if user.quiet_hours_end else None,
             "trustScore": user.trust_score,
+            "trustLevel": user.trust_level,
             "isVerified": user.is_verified,
             "onlineStatus": user.online_status,
             "skills": user.skills if isinstance(user.skills, list) else [],
+            "date_joined": user.date_joined,
+            "totalPosts": total_posts,  # ← here you return the total number of posts
             "pulses": pulses_data,
         }
 
         return JsonResponse({"user": user_data})
 
     return JsonResponse({"error": "Method not allowed"}, status=405)
+
+
+@login_required
+@require_http_methods(["PUT"])
+def become_verified(request):
+    try:
+        user = request.user
+
+        # Calculate account age
+        account_age = timezone.now() - user.date_joined
+
+        # Calculate total posts (example using Pulses, Alerts, UrgentRequests)
+        total_posts = (
+                Pulse.objects.filter(user=user).count() +
+                Alert.objects.filter(user=user).count() +
+                UrgentRequest.objects.filter(user=user).count()
+        )
+
+        # Check eligibility
+        if total_posts <= 15:
+            return JsonResponse({"success": False, "error": "Not enough posts to become verified."}, status=400)
+
+        if user.trust_score < 200:
+            return JsonResponse({"success": False, "error": "Trust level not high enough."}, status=400)
+
+        # Account age: either older than 3 months or older than 3 hours
+        if not (account_age >= timedelta(days=90)):
+            return JsonResponse({"success": False, "error": "Account is too new to become verified."}, status=400)
+
+        # Mark user as verified
+        user.is_verified = True
+        user.save(update_fields=["is_verified"])
+
+        return JsonResponse({"success": True, "message": "You are now a verified neighbour!"})
+
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
 
 
 @login_required
@@ -332,6 +382,7 @@ def update_profile(request):
                 "quiet_hours_start": user.quiet_hours_start,
                 "quiet_hours_end": user.quiet_hours_end,
                 "trustScore": user.trust_score,
+                "trustLevel": user.trust_level,
                 "isVerified": user.is_verified,
                 "onlineStatus": user.online_status,
                 "skills": user.skills or [],
@@ -406,6 +457,7 @@ def upload_profile_picture(request):
                 "quiet_hours_start": user.quiet_hours_start,
                 "quiet_hours_end": user.quiet_hours_end,
                 "trustScore": user.trust_score,
+                "trustLevel": user.trust_level,
                 "isVerified": user.is_verified,
                 "onlineStatus": user.online_status,
                 "pulses": pulses_data,
@@ -459,13 +511,19 @@ def add_pulse(request):
         if lat and lng:
             location_point = Point(float(lng), float(lat), srid=4326)
 
+        trust_required = False
+        price = data.get('price', 0)
+        if price > 1000:
+            trust_required = True
+
         pulse = Pulse.objects.create(
             user=request.user,
             title=data.get('title'),
             description=data.get('description', ''),
             category=data.get('category', ''),
             pulse_type=data.get('pulse_type'),  # 'servicii' sau 'obiecte'
-            price=data.get('price', 0),
+            price=price,
+            trust_required=trust_required,
             currencyType=data.get('currencyType', 'RON'),
             phone_number=data.get('phone_number', ''),
             location=location_point,
@@ -499,6 +557,8 @@ def add_pulse(request):
             "pulses_feed",
             {"type": "pulse.message", "data": broadcast_payload}
         )
+
+        update_user_trust_score_task.delay(request.user.id)
 
         return JsonResponse({
             "success": True,
@@ -927,13 +987,12 @@ def get_pulse_by_id(request, pulse_id):
             for img in pulse.images.all()
         ]
 
-        # Get reserved (unavailable) periods - return ISO strings for frontend
         unavailable_ranges = [
             {
                 "start": rental.start_date.isoformat(),
                 "end": rental.end_date.isoformat(),
                 "status": rental.status,
-                "renter_id": rental.renter_id if hasattr(rental, "renter_id") else None,
+                "renter_id": getattr(rental, "renter_id", None),
             }
             for rental in pulse.rentals.filter(status__in=["pending", "confirmed"])
         ]
@@ -944,26 +1003,29 @@ def get_pulse_by_id(request, pulse_id):
         except PulseRating.DoesNotExist:
             user_rating = None
 
+        # New field: does the current user have enough trust to view/interact with this pulse?
+        has_trust_access = request.user.is_verified and request.user.trust_score > 200
+
         data = {
             "id": pulse.id,
             "type": pulse.pulse_type,
             "user": pulse.user.username,
             "user_id": pulse.user.id,
             "user_avatar": request.build_absolute_uri(pulse.user.profile_picture.url) if pulse.user.profile_picture else None,
+            "trustLevel": pulse.user.trust_level,
+            "trustRequired": pulse.trust_required,
             "name": pulse.title,
             "description": pulse.description,
             "price": float(pulse.price),
             "currency": pulse.currencyType,
             "location": coords,
             "timestamp": pulse.created_at.strftime("%d %b %Y, %H:%M"),
-            "is_favorite": FavoritePulse.objects.filter(
-                pulse=pulse,
-                user=request.user
-            ).exists(),
+            "is_favorite": FavoritePulse.objects.filter(pulse=pulse, user=request.user).exists(),
             "images": images,
             "user_rating": user_rating,
-            "reserved_periods": unavailable_ranges,  # kept for backwards compat
-            "unavailable_ranges": unavailable_ranges,  # new canonical field
+            "reserved_periods": unavailable_ranges,
+            "unavailable_ranges": unavailable_ranges,
+            "has_trust_access": has_trust_access,  # <-- new field
         }
 
         return JsonResponse({
@@ -1100,6 +1162,8 @@ def add_pulse_rating(request, pulse_id):
     pulse.popularity_score = Decimal(popularity_score).quantize(Decimal('0.01'))
     pulse.save(update_fields=['total_reviews', 'popularity_score'])
 
+    update_user_trust_score_task.delay(pulse.user.id)
+
     return JsonResponse({
         "success": True,
         "rating": rating_obj.rating,
@@ -1133,6 +1197,9 @@ def create_pulse_rental(request):
 
     if pulse.user == request.user:
         return JsonResponse({"success": False, "error": "You cannot propose a rental to your own pulse."}, status=403)
+
+    if pulse.trust_required and not (request.user.trust_score>200 and request.user.is_verified):
+        return JsonResponse({"success": False, "error": "You need a higher trust score to access this."}, status=403)
 
     start_date = parse_datetime(start_date_str) or parse_date(start_date_str)
     end_date = parse_datetime(end_date_str) or parse_date(end_date_str)
@@ -1248,6 +1315,7 @@ def get_user_rentals(request):
                 "renter": rental.renter.username,
                 "start_date": rental.start_date,
                 "end_date": rental.end_date,
+                "last_offer_by": rental.last_offer_by.id if rental.last_offer_by else None,
                 "total_price": str(rental.total_price),
                 "initial_price": str(rental.initial_price),
                 "status": rental.status,
@@ -1585,6 +1653,7 @@ def user_profile(request, user_id):
             "quiet_hours_start": user.quiet_hours_start,
             "quiet_hours_end": user.quiet_hours_end,
             "trustScore": user.trust_score,
+            "trustLevel": user.trust_level,
             "isVerified": user.is_verified,
             "onlineStatus": user.online_status,
             "private_account": user.private_account,
@@ -2005,6 +2074,8 @@ def create_alert(request):
             }
         )
 
+        update_user_trust_score_task.delay(request.user.id)
+
         return JsonResponse({
             "success": True,
             "alert_id": alert.id,
@@ -2414,6 +2485,8 @@ def get_request_by_id(request, request_id):
             for img in urgent_request.images.all()
         ]
 
+        has_trust_access = request.user.is_verified and request.user.trust_score > 200
+
         data = {
             "id": urgent_request.id,
             "user": urgent_request.user.username,
@@ -2421,6 +2494,8 @@ def get_request_by_id(request, request_id):
             "user_avatar": request.build_absolute_uri(
                 urgent_request.user.profile_picture.url
             ) if urgent_request.user.profile_picture else None,
+            "trustLevel": urgent_request.user.trust_level,
+            "trustRequired": urgent_request.trust_required,
 
             "title": urgent_request.title,
             "description": urgent_request.description,
@@ -2436,6 +2511,7 @@ def get_request_by_id(request, request_id):
             "is_flagged": urgent_request.is_flagged,
             "toxicity_score": urgent_request.toxicity_score,
             "timestamp": urgent_request.created_at.strftime("%d %b %Y, %H:%M"),
+            "has_trust_access": has_trust_access,
 
 
             "expires_at": urgent_request.expires_at.strftime("%d %b %Y, %H:%M") if urgent_request.expires_at else None,
@@ -2469,6 +2545,11 @@ def create_urgent_request(request):
     should_flag = getattr(request, 'needs_review', False)
     ai_score = getattr(request, 'toxicity_score', 0.0)
 
+    trust_required = False
+    max_price = data.get('max_price', 0)
+    if max_price > 1000:
+        trust_required = True
+
     new_request = UrgentRequest.objects.create(
         user=request.user,
         description=data.get("description"),
@@ -2476,7 +2557,8 @@ def create_urgent_request(request):
         category=data.get("category"),
         expires_at=data.get("expires_at"),
         location=Point(float(data["lng"]), float(data["lat"])) if "lng" in data and "lat" in data else None,
-        max_price=data.get("max_price", 0),
+        max_price=max_price,
+        trust_required=trust_required,
 
         is_flagged=should_flag,
         is_approved=not should_flag,
@@ -2488,6 +2570,7 @@ def create_urgent_request(request):
         UrgentRequestImage.objects.create(urgent_request=new_request, image=img)
 
     run_hero_search_task.delay(new_request.id)
+    update_user_trust_score_task.delay(request.user.id)
 
     return JsonResponse({"success": True, "id": new_request.id})
 
@@ -2570,6 +2653,257 @@ def get_request_comments(request, request_id):
             "success": False,
             "error": "Invalid request method"
         }, status=405)
+
+
+@login_required
+@csrf_exempt
+def create_request_offer(request):
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Invalid request method."}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        request_id = data.get("request_id")
+        proposed_price = data.get("proposed_price")
+    except Exception:
+        return JsonResponse({"success": False, "error": "Invalid JSON data."}, status=400)
+
+    if not request_id or proposed_price is None:
+        return JsonResponse({"success": False, "error": "Missing required fields."}, status=400)
+
+    try:
+        urgent_request = UrgentRequest.objects.get(id=request_id)
+    except UrgentRequest.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Request not found."}, status=404)
+
+    if urgent_request.user == request.user:
+        return JsonResponse(
+            {"success": False, "error": "You cannot make an offer to your own request."},
+            status=403
+        )
+
+    if not urgent_request.is_active:
+        return JsonResponse({"success": False, "error": "This request is no longer active."}, status=400)
+
+    if urgent_request.expires_at and urgent_request.expires_at <= timezone.now():
+        return JsonResponse({"success": False, "error": "This request has expired."}, status=400)
+
+    if urgent_request.trust_required and not (request.user.is_verified and request.user.trust_score > 200):
+        return JsonResponse(
+            {"success": False, "error": "You need a higher trust score to access this."},
+            status=403
+        )
+
+    try:
+        proposed_total = Decimal(str(proposed_price))
+        if proposed_total <= 0:
+            raise InvalidOperation
+    except (InvalidOperation, ValueError):
+        return JsonResponse({"success": False, "error": "Proposed price must be positive."}, status=400)
+
+    if urgent_request.max_price is not None and proposed_total > urgent_request.max_price:
+        return JsonResponse(
+            {"success": False, "error": "Proposed price exceeds the request maximum price."},
+            status=400
+        )
+
+    existing_offer = UrgentRequestOffer.objects.filter(
+        request=urgent_request,
+        proposer=request.user
+    ).first()
+
+    if existing_offer:
+        return JsonResponse(
+            {"success": False, "error": "You already made an offer for this request."},
+            status=400
+        )
+
+    offer = UrgentRequestOffer.objects.create(
+        request=urgent_request,
+        proposer=request.user,
+        total_price=proposed_total,
+        initial_price=proposed_total,
+        status="pending",
+        last_offer_by=request.user
+    )
+
+    notification = Notification.objects.create(
+        user=urgent_request.user,
+        sender=request.user,
+        type="request_offer",
+        title="New Offer Proposal",
+        message=f"{request.user.username} offered {proposed_total} for '{urgent_request.title}'",
+        metadata={
+            "request_id": urgent_request.id,
+            "offer_id": offer.id,
+            "proposed_total": str(proposed_total),
+        }
+    )
+
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f"user_notifications_{urgent_request.user.id}",
+        {
+            "type": "send_rental_notification",
+            "title": notification.title,
+            "message": notification.message,
+            "request_id": urgent_request.id,
+            "offer_id": offer.id,
+            "proposed_total": str(proposed_total),
+            "proposer_id": request.user.id,
+            "proposer_username": request.user.username,
+        }
+    )
+
+    return JsonResponse({
+        "success": True,
+        "offer_id": offer.id,
+        "total_price": str(proposed_total)
+    })
+
+
+def get_user_request_offers(request):
+    """Gets all offers made ON the current user's UrgentRequests."""
+    if request.method == "GET":
+        # Assuming UrgentRequest has a 'user' or 'owner' field.
+        # Update 'request__user' if your related name is different.
+        offers = UrgentRequestOffer.objects.filter(request__user=request.user)
+
+        data = []
+        for offer in offers:
+            data.append({
+                "id": offer.id,
+                "request_title": offer.request.title,
+                "proposer": offer.proposer.username,
+                "total_price": str(offer.total_price),
+                "last_offer_by": offer.last_offer_by.id if offer.last_offer_by else None,
+                "initial_price": str(offer.initial_price),
+                "status": offer.status,
+                "created_at": offer.created_at.isoformat(),
+            })
+
+        return JsonResponse(data, safe=False)
+
+
+@csrf_exempt
+def modify_offer_status(request, offer_id):
+    """Allows accepting/declining or making a counteroffer on an existing UrgentRequestOffer."""
+    try:
+        offer = UrgentRequestOffer.objects.get(id=offer_id)
+    except UrgentRequestOffer.DoesNotExist:
+        return JsonResponse({"error": "Offer not found"}, status=404)
+
+    user = request.user
+    is_owner = offer.request.user == user
+    is_proposer = offer.proposer == user
+
+    if request.method == "PATCH":
+        if not (is_owner or is_proposer):
+            return JsonResponse({"error": "Unauthorized"}, status=403)
+
+        try:
+            data = json.loads(request.body)
+            status = data.get("status")                # accept / decline
+            new_total_price = data.get("total_price")  # counteroffer price
+
+            notify_other_user = False
+
+            # --- handle status update ---
+            if status:
+                offer.status = status
+                offer.last_offer_by = None  # reset last_offer_by if accepted/declined
+
+            # --- handle counteroffer ---
+            if new_total_price is not None:
+                # Backend validation: prevent counteroffers from exceeding the requester's budget
+                # Assuming UrgentRequest has a 'budget' field
+                if hasattr(offer.request, 'budget') and offer.request.max_price is not None:
+                    if float(new_total_price) > float(offer.request.budget):
+                        return JsonResponse({"error": f"Offer cannot exceed the target budget of {offer.request.budget}."}, status=400)
+
+                offer.total_price = float(new_total_price)
+                offer.status = "pending"  # counteroffers set status back to pending
+                offer.last_offer_by = user  # track who made the last offer
+                notify_other_user = True    # flag to send notification
+
+            offer.save()
+
+            # --- send notification if counteroffer was made ---
+            if notify_other_user:
+                other_user = offer.request.user if is_proposer else offer.proposer
+
+                # Ensure your Notification model supports these fields
+                notification = Notification.objects.create(
+                    user=other_user,
+                    sender=user,
+                    type="request_offer",
+                    title="Offer Counteroffer",
+                    message=f"{user.username} updated the offer price for {offer.request.title} to {offer.total_price}",
+                    # You might need to adjust these kwargs based on your Notification model:
+                    pulse_id=offer.request.id,
+                    rental_id=offer.id,
+                    metadata={"new_total_price": str(offer.total_price)}
+                )
+
+                # send via WebSocket
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    f"user_notifications_{other_user.id}",
+                    {
+                        "type": "send_rental_notification", # Ensure you handle this type in your consumer
+                        "title": notification.title,
+                        "message": notification.message,
+                        "pulse_id": offer.request.id,
+                        "rental_id": offer.id,
+                        "total_price": str(offer.total_price),
+                        "sender_id": user.id,
+                        "sender_username": user.username,
+                    }
+                )
+
+
+            return JsonResponse({
+                "message": "Offer updated successfully",
+                "status": offer.status,
+                "total_price": str(offer.total_price),
+                "last_offer_by": offer.last_offer_by.id if offer.last_offer_by else None
+            })
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
+
+    elif request.method == "DELETE":
+        # only the proposer can cancel their offer
+        if not is_proposer:
+            return JsonResponse({"error": "Only the proposer can delete this offer"}, status=403)
+
+        offer.delete()
+        return JsonResponse({"message": "Offer deleted successfully"})
+
+    return JsonResponse({"error": "Invalid method"}, status=405)
+
+
+@login_required
+def get_my_offers(request):
+    """Gets all offers made BY the current user on others' UrgentRequests."""
+    if request.method == "GET":
+        user = request.user
+        offers = UrgentRequestOffer.objects.filter(proposer=user)
+
+        data = []
+        for offer in offers:
+            data.append({
+                "id": offer.id,
+                "request_title": offer.request.title,
+                "proposer": offer.proposer.username,
+                "total_price": str(offer.total_price),
+                "last_offer_by": offer.last_offer_by.id if offer.last_offer_by else None,
+                "initial_price": str(offer.initial_price),
+                "status": offer.status,
+                "created_at": offer.created_at.isoformat(),
+            })
+
+        return JsonResponse(data, safe=False)
 
 
 

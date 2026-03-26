@@ -11,6 +11,7 @@ from sentence_transformers import SentenceTransformer
 from transformers import pipeline
 from PIL import Image
 from pgvector.django import CosineDistance
+from django.db.models import Avg
 # Import your models here - update paths as necessary
 from .models import UrgentRequest, User, Notification, AlertImage
 
@@ -172,3 +173,51 @@ def process_pet_image_and_find_matches(alert_instance):
     except Exception as e:
         print(f"[ERROR AI MATCHING] {e}")
         return []
+
+
+def calculate_trust_score(user):
+    score = 0
+
+    # ALERTS
+    alerts = user.notices.all()
+    for alert in alerts:
+        if alert.is_flagged:
+            score -= 8
+
+        score -= alert.toxicity_score * 5
+
+        if alert.is_verified:
+            score += 10
+        else:
+            score += 2
+
+    # PULSES
+    pulses = user.pulses.all()
+    for pulse in pulses:
+        if pulse.is_flagged:
+            score -= 10
+
+        score += float(pulse.popularity_score) * 0.5
+
+        if pulse.is_available:
+            score += 3
+
+        # ⭐ NEW: ratings impact
+        avg_rating = pulse.pulserating_set.aggregate(avg=Avg("rating"))["avg"]
+
+        if avg_rating:
+            # Normalize around 5 (neutral midpoint if rating is 1–10)
+            normalized = avg_rating - 5
+
+            # Weight it (important: don’t make it too strong)
+            score += normalized * 2  # tweakable
+
+    # URGENT REQUESTS
+    requests = user.urgent_requests.all()
+    for req in requests:
+        if req.is_flagged:
+            score -= 6
+        else:
+            score += 2
+
+    return round(score, 2)
