@@ -60,7 +60,7 @@ class PulseAdmin(admin.ModelAdmin):
 @admin.register(Alert)
 class AlertAdmin(admin.ModelAdmin):
     form = LocationAdminForm
-    list_display = ('title', 'user', 'category', 'is_active', 'created_at')
+    list_display = ('title', 'user', 'category', 'is_active', 'created_at', 'is_verified')
     readonly_fields = ('created_at',)  # Make sure Django knows it's read-only
     exclude = ('location',)
 

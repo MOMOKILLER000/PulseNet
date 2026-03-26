@@ -396,6 +396,10 @@ class Alert(models.Model):
     def __str__(self):
         return f"{self.title} ({self.get_category_display()})"
 
+    @property
+    def is_verified(self):
+        return self.confirm_count > 10
+
 
 class AlertImage(models.Model):
     alert = models.ForeignKey(
