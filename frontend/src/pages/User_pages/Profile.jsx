@@ -4,8 +4,21 @@ import styles from "../../styles/User_pages/profile.module.css";
 import Loading from "../../components/Loading";
 import { MapContainer, TileLayer, Marker, Circle, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { X, Plus, ShieldAlert, AlertTriangle } from 'lucide-react';
-
+import {AnimatePresence, motion} from "framer-motion";
+import {
+    X,
+    Plus,
+    SquarePen,
+    Shield,
+    Phone,
+    Pencil,
+    CalendarDays,
+    DollarSign,
+    Boxes,
+    BriefcaseBusiness,
+    Handshake,
+    Repeat, Undo, Save
+} from 'lucide-react';
 function ChangeView({ center, radiusKm }) {
     const map = useMap();
     useEffect(() => {
@@ -38,6 +51,11 @@ function getCookie(name) {
         }
     }
     return cookieValue;
+}
+const btnMotion = {
+    whileHover: {scale: 1.05},
+    whileTap: {scale: 0.95},
+    transition: {duration: 0.15}
 }
 
 const formatTimeForInput = (timeString) => {
@@ -157,6 +175,7 @@ export default function Profile() {
     });
 
 
+
     // accept/decline modals
     const [acceptOfferModal, setAcceptOfferModal] = useState({ show: false, id: null });
     const [declineOfferModal, setDeclineOfferModal] = useState({ show: false, id: null });
@@ -178,7 +197,7 @@ export default function Profile() {
 
             if (!value) return;
             if (value.length > 20) {
-                alert("Maxim 20 de caractere!");
+                alert("20 characters at most");
                 return;
             }
 
@@ -191,7 +210,7 @@ export default function Profile() {
                 }));
                 e.target.value = '';
             } else {
-                alert("Ai adăugat deja acest skill!");
+                alert("You have added this skill already!");
             }
         }
     };
@@ -686,11 +705,10 @@ export default function Profile() {
                     updateOfferInState(id, { status: updated.status || "declined" });
                 }
             } else {
-                alert("Eroare la refuzarea ofertei.");
+                alert("Error rejecting the offer.");
             }
         } catch (err) {
-            console.error("Network error while declining offer:", err);
-            alert("Eroare de rețea. Încearcă din nou.");
+            alert("Network error while declining offer:");
         } finally {
             setDeclineModal({ show: false, id: null });
         }
@@ -711,11 +729,10 @@ export default function Profile() {
                 setRentalProposals((prev) => prev.filter((p) => p.id !== id));
                 closeDeleteModal();
             } else {
-                alert("Nu s-a putut anula propunerea.");
+                alert("The proposal could not be canceled.");
             }
         } catch (err) {
-            console.error("Network error deleting proposal:", err);
-            alert("Eroare de rețea. Încearcă din nou.");
+            alert("Network error deleting proposal:");
         }
     };
 
@@ -774,11 +791,10 @@ export default function Profile() {
 
                 closeCounterModal();
             } else {
-                alert("Eroare la trimiterea contraofertei.");
+                alert("Error sending counteroffer.");
             }
         } catch (err) {
-            console.error("Network error sending counteroffer:", err);
-            alert("Eroare de rețea. Încearcă din nou.");
+            alert("Network error sending counteroffer:");
         }
     };
 
@@ -954,20 +970,52 @@ export default function Profile() {
         }
     };
 
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    const itemsPerPage = 4;
+
+    const handleFilterChange = (type) => {
+        setPulseFilter(type);
+        setCurrentIndex(0);
+    };
+
+    const currentPulses = filteredPulses.slice(currentIndex, currentIndex + itemsPerPage);
+
+    const handleNext = () => {
+        if (currentIndex + itemsPerPage < filteredPulses.length) {
+            setCurrentIndex(prev => prev + itemsPerPage);
+        }
+    };
+
+    const handlePrev = () => {
+        if (currentIndex - itemsPerPage >= 0) {
+            setCurrentIndex(prev => prev - itemsPerPage);
+        }
+    };
+
+
     if (loading) return <Loading />;
     if (!user) return <div className={styles.error}>Could not load user data.</div>;
 
     return (
         <div className={styles.body}>
+            <div className={styles.topGreenBar}></div>
+
             <div className={styles.mainContainer}>
-                <Navbar />
+                <div className={styles.navWrapper}>
+                    <Navbar />
+                </div>
 
                 <div className={styles.container}>
-                    {/* Cover Photo */}
-                    <div className={styles.coverPhoto}></div>
 
                     {/* HEADER CARD */}
-                    <div className={styles.headerCard}>
+                    <motion.div
+                                className={styles.headerCard}
+                                whileHover={{scale: 1.02}}
+                                initial={{ opacity: 0, y: -20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.4, ease: "easeOut" }}>
+
                         <div className={styles.headerLayout}>
                             {/* Avatar & Trust Score */}
                             <div className={styles.avatarSection}>
@@ -991,36 +1039,66 @@ export default function Profile() {
                                         onChange={handleFileChange}
                                     />
 
-                                    <button
+                                    <motion.button {...btnMotion}
                                         className={styles.editButton}
                                         title="Change Profile Picture"
                                         type="button"
                                         onClick={openFilePicker}
                                     >
-                                        ✏️
-                                    </button>
+                                        <Pencil color="green"/>
+                                    </motion.button>
 
                                     {user.profilePicture && (
-                                        <button
+                                        <motion.button {...btnMotion}
                                             onClick={() => setShowDeleteModal(true)}
                                             className={styles.deleteButton}
                                             type="button"
                                             title="Delete Profile Picture"
                                         >
-                                            ❌
-                                        </button>
+                                            <X/>
+                                        </motion.button>
                                     )}
                                 </div>
 
+                                <div className={styles.resWrapperForButtonAndTag}>
+                                    <div className={`${styles.trustBadge} ${styles["comments" + user.trustLevel]}`}>
+                                        <span className={styles.trustIcon}><Shield size={16}/></span>
+                                        <span className={styles.trustValue}>{user.trustLevel} • {user.trustScore} </span>
+                                    </div>
 
-                                <div className={`${styles.trustBadge} ${styles["comments" + user.trustLevel]}`}>
-                                    <span className={styles.trustIcon}>🛡️</span>
-                                    <span className={styles.trustValue}>
-                                {user.trustLevel} • {user.trustScore}
-                                </span>
+                                    {!editMode && (
+                                        <motion.button {...btnMotion}
+                                            onClick={() => {
+                                                setEditForm((prev) => ({
+                                                    firstName: user.firstName || "",
+                                                    lastName: user.lastName || "",
+                                                    username: user.username || "",
+                                                    email: user.email || "",
+                                                    biography: user.biography || "",
+                                                    online_status: user.online_status ?? user.onlineStatus ?? "offline",
+                                                    quiet_hours_start: formatTimeForInput(user.quiet_hours_start ?? user.quietHoursStart),
+                                                    quiet_hours_end: formatTimeForInput(user.quiet_hours_end ?? user.quietHoursEnd),
+                                                    visibility_radius: user.visibility_radius || 1,
+                                                    lat: user.location?.coordinates?.[1] ?? prev.lat,
+                                                    lng: user.location?.coordinates?.[0] ?? prev.lng,
+                                                    skills: user.skills || [],
+                                                }));
+                                                setEditMode(true);
+                                                navigator.geolocation?.getCurrentPosition((position) => {
+                                                    setEditForm((prev) => ({
+                                                        ...prev,
+                                                        lat: position.coords.latitude,
+                                                        lng: position.coords.longitude,
+                                                    }));
+                                                });
+                                            }}
+                                            className={styles.editProfileBtn}
+                                        >
+                                            <SquarePen/>
+                                            Edit Profile
+                                        </motion.button>
+                                    )}
                                 </div>
-
-
                             </div>
 
                             {/* Profile Info / Edit Form */}
@@ -1122,11 +1200,10 @@ export default function Profile() {
                                                 {editForm.skills?.map((skill, index) => (
                                                     <span key={index} className={styles.tagWithDelete}>
                                                          {skill}
-                                                        <button
+                                                        <motion.button {...btnMotion}
                                                             type="button"
                                                             onClick={() => removeSkill(skill)}
-                                                            className={styles.deleteTagBtn}
-                                                        > × </button>
+                                                        > <X color='red'/> </motion.button>
                                                     </span>
                                                 ))}
                                             </div>
@@ -1156,7 +1233,6 @@ export default function Profile() {
                                             />
 
                                             <div className={styles.mapContainer}>
-                                                {/* Folosim coordonatele din editForm, sau un fallback (București) dacă sunt null */}
                                                 <MapContainer
                                                     center={editForm.lat && editForm.lng ? [editForm.lat, editForm.lng] : [44.4268, 26.1025]}
                                                     zoom={13}
@@ -1167,12 +1243,10 @@ export default function Profile() {
                                                         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                                                     />
 
-                                                    {/* Asigură-te că harta se recentrează când se schimbă locația */}
                                                     {editForm.lat && editForm.lng && (
                                                         <ChangeView center={[editForm.lat, editForm.lng]} radiusKm={editForm.visibility_radius} />
                                                     )}
 
-                                                    {/* Marker-ul și Cercul se afișează doar dacă avem coordonate setate */}
                                                     {editForm.lat && editForm.lng && (
                                                         <>
                                                             <Marker position={[editForm.lat, editForm.lng]} />
@@ -1187,12 +1261,15 @@ export default function Profile() {
                                             </div>
                                         </div>
                                         <div className={styles.editActions}>
-                                            <button onClick={handleSave} className={styles.saveButton}>
-                                                Save Changes
-                                            </button>
-                                            <button onClick={() => setEditMode(false)} className={styles.cancelButton}>
+
+                                            <motion.button {...btnMotion} onClick={() => setEditMode(false)} className={styles.cancelButton}>
                                                 Cancel
-                                            </button>
+                                            </motion.button>
+
+                                            <motion.button {...btnMotion} onClick={handleSave} className={styles.saveButton}>
+                                                <Save className='mr-1 mb-1'/> Save
+                                            </motion.button>
+
                                         </div>
                                     </div>
                                 ) : (
@@ -1206,7 +1283,7 @@ export default function Profile() {
                                             {!user.isVerified && user.totalPosts > 15 &&
                                                 user.trustScore > 200 &&
                                                 ((new Date() - new Date(user.date_joined)) / (1000 * 60 * 60 * 24 * 30) >= 3) && (
-                                                    <button className={styles.askVerified} onClick={() => becomeVerified(user.id)}>Become a verified neighbour</button>
+                                                    <motion.button {...btnMotion} className={styles.askVerified} onClick={() => becomeVerified(user.id)}>Become a verified neighbour</motion.button>
                                                 )}
                                         </div>
 
@@ -1216,121 +1293,151 @@ export default function Profile() {
 
                                         <p className={styles.biography}>{user.biography}</p>
 
-                                        <div className={styles.publicSkillsSection}>
-                                            <div className={styles.publicTagsContainer}>
-                                                {user?.skills?.map((skill, index) => (
-                                                    <span key={index} className={styles.publicTag}>
-                                                        {skill}
-                                                     </span>
-                                                ))}
-                                            </div>
+                                        <div className={styles.publicTagsContainer}>
+                                            {user?.skills?.map((skill, index) => (
+                                                <span key={index} className={styles.publicTag}>
+                                                    {skill}
+                                                 </span>
+                                            ))}
                                         </div>
 
-                                        <button
-                                            onClick={() => {
-                                                setEditForm((prev) => ({
-                                                    firstName: user.firstName || "",
-                                                    lastName: user.lastName || "",
-                                                    username: user.username || "",
-                                                    email: user.email || "",
-                                                    biography: user.biography || "",
-                                                    online_status: user.online_status ?? user.onlineStatus ?? "offline",
-                                                    quiet_hours_start: formatTimeForInput(user.quiet_hours_start ?? user.quietHoursStart),
-                                                    quiet_hours_end: formatTimeForInput(user.quiet_hours_end ?? user.quietHoursEnd),
-                                                    visibility_radius: user.visibility_radius || 1,
-                                                    lat: user.location?.coordinates?.[1] ?? prev.lat,
-                                                    lng: user.location?.coordinates?.[0] ?? prev.lng,
-                                                    skills: user.skills || [],
-                                                }));
-                                                setEditMode(true);
-                                                navigator.geolocation?.getCurrentPosition((position) => {
-                                                    setEditForm((prev) => ({
-                                                        ...prev,
-                                                        lat: position.coords.latitude,
-                                                        lng: position.coords.longitude,
-                                                    }));
-                                                });
-                                            }}
-                                            className={styles.editProfileBtn}
-                                        >
-                                            Edit Profile
-                                        </button>
+
                                     </div>
                                 )}
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
 
                     {/* PULSES SECTION */}
-                    <div className={styles.contentArea}>
-                        <div className={styles.card}>
+                    <motion.div className={styles.contentArea}>
+                        <motion.div
+                            className={styles.card}
+                            whileHover={{ y: -2, boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            {/* Header modificat cu butoane */}
                             <div className={styles.pulsesHeader}>
-                                <h2 className={styles.sectionTitle}>Anunțurile mele</h2>
-                                <select
-                                    className={styles.pulseTypeDropdown}
-                                    value={pulseFilter}
-                                    onChange={(e) => setPulseFilter(e.target.value)}
-                                >
-                                    <option value="obiecte">Obiecte</option>
-                                    <option value="servicii">Servicii</option>
-                                </select>
+                                <h2 className={styles.sectionTitle}>My listings</h2>
+                                <div className={styles.filterButtonsRow}>
+                                    <motion.button {...btnMotion}
+                                        className={`${styles.filterBtn} ${pulseFilter === "obiecte" ? styles.activeFilter : ""}`}
+                                        onClick={() => handleFilterChange("obiecte")}
+                                    >
+                                        Objects
+                                    </motion.button>
+                                    <motion.button {...btnMotion}
+                                        className={`${styles.filterBtn} ${pulseFilter === "servicii" ? styles.activeFilter : ""}`}
+                                        onClick={() => handleFilterChange("servicii")}
+                                    >
+                                        Services
+                                    </motion.button>
+                                </div>
                             </div>
 
-                            {/* Pulse list */}
+                            {/* Pulse list - Acum mapează doar elementele din pagina curentă (currentPulses) */}
                             <div className={styles.objectGrid}>
                                 {filteredPulses.length === 0 && (
-                                    <p className={styles.emptyState}>Niciun anunț de tip „{pulseFilter}" încă.</p>
+                                    <p className={styles.emptyState}>No posts of type „{pulseFilter}” yet.</p>
                                 )}
-                                {filteredPulses.map((pulse) => (
-                                    <div key={pulse.id} className={styles.objectCard}>
+
+                                {currentPulses.map((pulse) => (
+                                    <motion.div
+                                                key={pulse.id}
+                                                className={styles.objectCard}
+                                                initial={{ opacity: 0, y: 16 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ duration: 0.3}}
+                                                whileHover={{ y: -3, boxShadow: "0 8px 24px rgba(0,0,0,0.1)" }} >
                                         <div className={styles.objectImage}>
                                             {pulse.images && pulse.images.length > 0 ? (
                                                 <img src={pulse.images[0]} alt={pulse.title} className={styles.pulseImage} />
                                             ) : (
-                                                <span className={styles.imagePlaceholder}>{pulseFilter === "obiecte" ? "📦" : "🛠️"}</span>
+                                                <span className={styles.imagePlaceholder}>{pulseFilter === "obiecte" ? <Boxes size={80} color={'black'}/> : <BriefcaseBusiness size={80} color={'black'}/>}</span>
                                             )}
                                         </div>
                                         <div className={styles.objectInfo}>
                                             <h3 className={styles.objectName}>{pulse.title}</h3>
-                                            {pulse.category && <p className={styles.pulseCategory}>{pulse.category}</p>}
-                                            {pulse.phone_number && <p className={styles.pulsePhone}>📞 {pulse.phone_number}</p>}
-                                            <p className={styles.pulseDate}>
-                                                Postat:{" "}
-                                                {pulse.timestamp ? new Date(pulse.timestamp.replace(" ", "T") + "Z").toLocaleString("ro-RO", {
-                                                    day: "2-digit",
-                                                    month: "2-digit",
-                                                    year: "numeric",
-                                                    hour: "2-digit",
-                                                    minute: "2-digit",
-                                                }) : "—"}
-                                            </p>
-                                            <div className={styles.objectMeta}>
+                                            {pulse.phone_number && (
+                                                <p className={styles.pulsePhone}>
+                                                    <Phone size={16} color={'black'} style={{marginTop: '2px', marginRight: '5px'}}/>
+                                                    {pulse.phone_number}
+                                                </p>
+                                            )}
+                                            <div className='flex'>
+                                            <CalendarDays color={'black'}/>
+                                                <p className={styles.pulseDate}>
+                                                    Postat:{" "}
+                                                    {pulse.timestamp ? new Date(pulse.timestamp.replace(" ", "T") + "Z").toLocaleString("ro-RO", {
+                                                        day: "2-digit",
+                                                        month: "2-digit",
+                                                        year: "numeric",
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                    }) : "—"}
+                                                </p>
+                                            </div>
+                                            <div className='flex'>
+                                                <DollarSign color={'green'}/>
                                                 {pulse.price != null && (
-                                                    <span className={styles.price}>
-                                                        {pulse.price} {pulse.currencyType || "lei"}
+                                                    <span className="font-bold">
+                                    {pulse.price} {pulse.currencyType || "lei"}
                                                     </span>
                                                 )}
                                             </div>
                                         </div>
                                         <div className={styles.objectActions}>
-                                            <button onClick={() => handleEditPulse(pulse)} className={styles.editBtn}>
-                                                Editează
-                                            </button>
-                                            <button onClick={() => openDeletePulseModal(pulse.id)} className={styles.removeBtn}>
-                                                Șterge
-                                            </button>
+                                            <motion.button {...btnMotion} onClick={() => handleEditPulse(pulse)} className={styles.editBtn}>
+                                                <SquarePen className="mr-1"/>Edit Post
+                                            </motion.button>
+                                            <motion.button {...btnMotion} onClick={() => openDeletePulseModal(pulse.id)} className={styles.removeBtn}>
+                                                <X/>Delete
+                                            </motion.button>
                                         </div>
-                                    </div>
+                                    </motion.div>
                                 ))}
                             </div>
-                        </div>
+
+                            {filteredPulses.length > itemsPerPage && (
+                                <div className={styles.carouselControls}>
+                                    <motion.button {...btnMotion}
+                                        onClick={handlePrev}
+                                        disabled={currentIndex === 0}
+                                        className={styles.carouselBtn}
+                                    >
+                                        &larr; Prev
+                                    </motion.button>
+
+                                    <span className={styles.carouselIndicator}>
+                    {Math.floor(currentIndex / itemsPerPage) + 1} / {Math.ceil(filteredPulses.length / itemsPerPage)}
+                </span>
+
+                                    <motion.button {...btnMotion}
+                                        onClick={handleNext}
+                                        disabled={currentIndex + itemsPerPage >= filteredPulses.length}
+                                        className={styles.carouselBtn}
+                                    >
+                                        Next &rarr;
+                                    </motion.button>
+                                </div>
+                            )}
+                        </motion.div>
 
                         {/* — Place modal here, outside the card — */}
                         {editingPulse && (
-                            <div className={styles.modalOverlay}>
-                                <div className={styles.modal}>
+                            <motion.div
+                                        className={styles.modalOverlay}
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}>
+
+                                <motion.div
+                                            className={styles.modal}
+                                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                            exit={{ opacity: 0, scale: 0.95 }}
+                                            transition={{ duration: 0.2 }}>
                                     <form onSubmit={handleSaveEdit} className={styles.alertForm}>
-                                        <h2 className={styles.formTitle}>Editează anunț</h2>
+                                        <h2 className={styles.formTitle}>Edit listing</h2>
 
                                         {/* TITLE */}
                                         <div className={styles.inputGroup}>
@@ -1351,15 +1458,15 @@ export default function Profile() {
                                                 value={pulseEditForm.category}
                                                 onChange={(e) => setPulseEditForm(prev => ({ ...prev, category: e.target.value }))}
                                             >
-                                                <option value="">Selectează</option>
-                                                <option value="obiecte">Obiecte</option>
-                                                <option value="servicii">Servicii</option>
+                                                <option value="">Select</option>
+                                                <option value="obiecte">Objects</option>
+                                                <option value="servicii">Services</option>
                                             </select>
                                         </div>
 
                                         {/* IMAGE GRID */}
                                         <div className={styles.imageUploadSection}>
-                                            <label className={styles.labelHeader}>Imagini</label>
+                                            <label className={styles.labelHeader}>Images</label>
                                             <div className={styles.imageGrid}>
                                                 {/* Preview Images */}
                                                 {imagesPreview.map((img, idx) => (
@@ -1368,13 +1475,13 @@ export default function Profile() {
                                                         className={styles.imagePreviewBox}
                                                         style={{ backgroundImage: `url(${img})` }}
                                                     >
-                                                        <button
+                                                        <motion.button {...btnMotion}
                                                             type="button"
                                                             onClick={() => removePulseImageAt(idx)}
                                                             className={styles.removeImgBtn}
                                                         >
                                                             <X size={16} />
-                                                        </button>
+                                                        </motion.button>
                                                     </div>
                                                 ))}
 
@@ -1390,7 +1497,7 @@ export default function Profile() {
                                                             hidden
                                                         />
                                                         <Plus size={24} />
-                                                        <span>Adaugă</span>
+                                                        <span>Add</span>
                                                     </label>
                                                 )}
                                             </div>
@@ -1449,7 +1556,7 @@ export default function Profile() {
 
                                         {/* ACTION BUTTONS */}
                                         <div className={styles.modalActions}>
-                                            <button
+                                            <motion.button {...btnMotion}
                                                 type="button"
                                                 onClick={() => {
                                                     setEditingPulse(null);
@@ -1460,59 +1567,69 @@ export default function Profile() {
                                                 }}
                                                 disabled={editLoading}
                                             >
-                                                Anulează
-                                            </button>
-                                            <button type="submit" disabled={editLoading}>
-                                                {editLoading ? "Se salvează..." : "Salvează"}
-                                            </button>
+                                                Cancel
+                                            </motion.button>
+                                            <motion.button {...btnMotion} type="submit" disabled={editLoading}>
+                                                {editLoading ? "Saving..." : "Save"}
+                                            </motion.button>
                                         </div>
                                     </form>
-                                </div>
-                            </div>
+                                </motion.div>
+                            </motion.div>
                         )}
-                    </div>
+                    </motion.div>
 
                     {/* RENTAL OFFERS SECTION */}
-                    <div className={styles.contentArea}>
-                        <div className={styles.card}>
+                    <motion.div className={styles.contentArea}>
+                        <motion.div
+                            className={styles.card}
+                            whileHover={{ y: -2, boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
+                            transition={{ duration: 0.2 }}
+                        >
                             <div className={styles.pulsesHeader}>
-                                <h2 className={styles.sectionTitle}>Oferte de închiriere</h2>
+                                <h2 className={styles.sectionTitle}>Rental offers</h2>
                                 <p className={styles.sectionSubtitle}>
-                                    Aici vezi cererile de închiriere pentru anunțurile tale — poți accepta, refuza sau trimite o contraofertă.
+                                    Here you can view rental requests for your listings — you can accept, decline, or send a counteroffer.
                                 </p>
                             </div>
 
                             <div className={styles.offersList}>
-                                {offersLoading && <p>Se încarcă oferte...</p>}
+                                {offersLoading && <p>Offers loading...</p>}
                                 {!offersLoading && rentalOffers.length === 0 && (
-                                    <p className={styles.emptyState}>Momentan nu există oferte pentru anunțurile tale.</p>
+                                    <p className={styles.emptyState}>There are currently no offers for your listings.</p>
                                 )}
 
                                 {rentalOffers.map((offer) => (
-                                    <div key={offer.id} className={styles.offerCard}>
+                                    <motion.div
+                                                key={offer.id}
+                                                className={styles.offerCard}
+                                                initial={{ opacity: 0, x: -12 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ duration: 0.25}}
+                                                whileHover={{ scale: 1.02 }}>
                                         <div className={styles.offerLeft}>
                                             <div className={styles.offerPulseTitle}>{offer.pulse?.title || "—"}</div>
                                             <div className={styles.offerMeta}>
                                                 <div>
-                                                    De la: <strong>{offer.renter?.username || offer.renter}</strong>
+                                                    From: <strong>{offer.renter?.username || offer.renter}</strong>
                                                 </div>
                                                 <div>
                                                     {offer.pulse_type === "servicii" ? (
-                                                        <span>Serviciu: <strong>{offer.pulse_title}</strong></span>
+                                                        <span>Service: <strong>{offer.pulse_title}</strong></span>
                                                     ) : (
-                                                        <span>Produs: <strong>{offer.pulse_title}</strong></span>
+                                                        <span>Product: <strong>{offer.pulse_title}</strong></span>
                                                     )}
                                                 </div>
                                                 <div>
-                                                    Perioadă: {formatDate(offer.start_date)} — {formatDate(offer.end_date)}
+                                                    Period: {formatDate(offer.start_date)} — {formatDate(offer.end_date)}
                                                 </div>
                                                 <div>
-                                                    Preț propus:{" "}
+                                                    Proposed price:{" "}
                                                     <strong>{formatCurrency(offer.total_price, offer.currencyType || "lei")}</strong>
                                                 </div>
                                                 {offer.total_price !== offer.initial_price && (
                                                     <div>
-                                                        Preț inițial:{" "}
+                                                        Initial price:{" "}
                                                         <strong>
                                                             {formatCurrency(offer.initial_price, offer.currencyType || "lei")}
                                                         </strong>
@@ -1525,50 +1642,61 @@ export default function Profile() {
                                         <div className={styles.offerActions}>
                                             {offer.status === "pending" && offer.last_offer_by !== user.id ? (
                                                 <>
-                                                    <button onClick={() => openAcceptModal(offer)} className={styles.acceptBtn}>
-                                                        Acceptă
-                                                    </button>
-                                                    <button onClick={() => openDeclineModal(offer)} className={styles.rejectBtn}>
-                                                        Refuză
-                                                    </button>
-                                                    <button onClick={() => openCounterModal(offer)} className={styles.counterBtn}>
-                                                        Contraofertă
-                                                    </button>
+                                                    <motion.button {...btnMotion} onClick={() => openAcceptModal(offer)} className={styles.acceptBtn}>
+                                                        <Handshake className='mr-1'/>Accept
+                                                    </motion.button>
+                                                    <motion.button {...btnMotion} onClick={() => openDeclineModal(offer)} className={styles.rejectBtn}>
+                                                        <X/>Decline
+                                                    </motion.button>
+                                                    <motion.button {...btnMotion} onClick={() => openCounterModal(offer)} className={styles.counterBtn}>
+                                                        <Repeat className='mr-1'/>Counteroffer
+                                                    </motion.button>
                                                 </>
                                             ) : (
                                                 <div className={styles.smallNote}>
-                                                    {offer.status === "confirmed" && "Ofertă acceptată"}
-                                                    {offer.status === "declined" && "Ofertă refuzată"}
-                                                    {offer.status === "completed" && "Închiriere finalizată"}
+                                                    {offer.status === "confirmed" && "Offer accepted"}
+                                                    {offer.status === "declined" && "Offer rejected"}
+                                                    {offer.status === "completed" && "Rental finished"}
                                                 </div>
                                             )}
                                         </div>
-                                    </div>
+                                    </motion.div>
                                 ))}
                             </div>
-                        </div>
-                    </div>
+                        </motion.div>
+                    </motion.div>
 
-                    <div className={styles.contentArea}>
-                        <div className={styles.card}>
+                    <motion.div className={styles.contentArea}>
+                        <motion.div
+                            className={styles.card}
+                            whileHover={{ y: -2, boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
+                            transition={{ duration: 0.2 }}
+                        >
                             <div className={styles.pulsesHeader}>
-                                <h2 className={styles.sectionTitle}>Propunerile mele de închiriere</h2>
+                                <h2 className={styles.sectionTitle}>My rental proposals</h2>
                                 <p className={styles.sectionSubtitle}>
-                                    Aici vezi toate propunerile trimise de tine și statusul lor.
+                                    Here you can see all the proposals you’ve sent and their status.
                                 </p>
                             </div>
 
                             <div className={styles.offersList}>
-                                {proposalsLoading && <p>Se încarcă propunerile...</p>}
+                                {proposalsLoading && <p>Proposals loading...</p>}
 
                                 {!proposalsLoading && rentalProposals.length === 0 && (
                                     <p className={styles.emptyState}>
-                                        Nu ai trimis încă nicio propunere de închiriere.
+                                        You haven’t sent any rental proposals yet.
                                     </p>
                                 )}
 
                                 {rentalProposals.map((proposal) => (
-                                    <div key={proposal.id} className={styles.offerCard}>
+                                    <motion.div
+                                        key={proposal.id}
+                                        className={styles.offerCard}
+                                        initial={{ opacity: 0, x: -12 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ duration: 0.25 }}
+                                        whileHover={{ scale: 1.02, boxShadow: "0 6px 20px rgba(0,0,0,0.08)" }}
+                                    >
 
                                         <div className={styles.offerLeft}>
                                             <div className={styles.offerPulseTitle}>
@@ -1577,7 +1705,7 @@ export default function Profile() {
 
                                             <div className={styles.offerMeta}>
                                                 <div>
-                                                    Tip:{" "}
+                                                    Type:{" "}
                                                     <strong>
                                                         {proposal.pulse_type === "servicii"
                                                             ? "Serviciu"
@@ -1586,12 +1714,12 @@ export default function Profile() {
                                                 </div>
 
                                                 <div>
-                                                    Perioadă: {formatDate(proposal.start_date)} —{" "}
+                                                    Period: {formatDate(proposal.start_date)} —{" "}
                                                     {formatDate(proposal.end_date)}
                                                 </div>
 
                                                 <div>
-                                                    Preț propus:{" "}
+                                                    Proposed price:{" "}
                                                     <strong>
                                                         {formatCurrency(
                                                             proposal.total_price,
@@ -1604,7 +1732,7 @@ export default function Profile() {
                                                     proposal.initial_price !==
                                                     proposal.total_price && (
                                                         <div>
-                                                            Preț inițial:{" "}
+                                                            Initial price:{" "}
                                                             <strong>
                                                                 {formatCurrency(
                                                                     proposal.initial_price,
@@ -1623,12 +1751,12 @@ export default function Profile() {
                                         <div className={styles.offerActions}>
                                             {proposal.status === "pending" && (
                                                 <>
-                                                    <button
+                                                    <motion.button {...btnMotion}
                                                         onClick={() => openDeleteModal(proposal)}
                                                         className={styles.rejectBtn}
                                                     >
-                                                        Anulează propunerea
-                                                    </button>
+                                                        <X/>Decline
+                                                    </motion.button>
 
                                                     {/* Counteroffer button for renter's own proposals */}
                                                 </>
@@ -1639,63 +1767,74 @@ export default function Profile() {
                                                 proposal.status === "pending" &&
                                                 (
                                                     <>
-                                                        <button
+                                                        <motion.button {...btnMotion}
                                                             onClick={() => openCounterModal(proposal)}
                                                             className={styles.counterBtn}
                                                             style={{ marginLeft: "8px" }}
                                                         >
-                                                            Contraofertă
-                                                        </button>
+                                                            Counteroffer
+                                                        </motion.button>
 
-                                                        <button
+                                                        <motion.button {...btnMotion}
                                                             onClick={() => openAcceptModal(proposal)}
                                                             className={styles.acceptBtn}
                                                         >
-                                                            Acceptă oferta
-                                                        </button>
+                                                            Accept the offer
+                                                        </motion.button>
 
-                                                        <button
+                                                        <motion.button {...btnMotion}
                                                             onClick={() => openDeclineModal(proposal)}
                                                             className={styles.rejectBtn}
                                                         >
-                                                            Refuză oferta
-                                                        </button>
+                                                            Refuse the offer
+                                                        </motion.button>
                                                     </>
                                                 )}
 
                                             {proposal.status === "confirmed" && (
-                                                <div className={styles.smallNote}>Închiriere confirmată</div>
+                                                <div className={styles.smallNote}>Rental confirmed.</div>
                                             )}
 
                                             {proposal.status === "declined" && (
-                                                <div className={styles.smallNote}>Oferta a fost refuzată</div>
+                                                <div className={styles.smallNote}>The offer has been declined.</div>
                                             )}
                                         </div>
-                                    </div>
+                                    </motion.div>
                                 ))}
                             </div>
-                        </div>
-                    </div>
+                        </motion.div>
+                    </motion.div>
 
-                    <div className={styles.contentArea}>
-                        <div className={styles.card}>
+                    <motion.div className={styles.contentArea}>
+                        <motion.div
+                            className={styles.card}
+                            whileHover={{ y: -2, boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
+                            transition={{ duration: 0.2 }}
+                        >
                             <div className={styles.pulsesHeader}>
-                                <h2 className={styles.sectionTitle}>Oferte pentru solicitările mele</h2>
+                                <h2 className={styles.sectionTitle}>Offers for my requests</h2>
                                 <p className={styles.sectionSubtitle}>
-                                    Utilizatorii s-au oferit să te ajute — poți accepta oferta lor, refuza sau negocia prețul.
+                                    Users have offered to help you — you can accept their offer, decline, or negotiate the price.
                                 </p>
                             </div>
 
                             <div className={styles.offersList}>
-                                {receivedOffersLoading && <p>Se încarcă oferte...</p>}
+                                {receivedOffersLoading && <p>Offers are loading...</p>}
                                 {!receivedOffersLoading && receivedRequestOffers.length === 0 && (
-                                    <p className={styles.emptyState}>Momentan nu ai primit nicio ofertă pentru cererile tale urgente.</p>
+                                    <p className={styles.emptyState}>You haven’t received any offers for your urgent requests yet.</p>
                                 )}
 
                                 {receivedRequestOffers.map((offer) => (
-                                    <div key={offer.id} className={styles.offerCard}>
+                                    <motion.div
+                                        key={offer.id}
+                                        className={styles.offerCard}
+                                        initial={{ opacity: 0, x: -12 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ duration: 0.25 }}
+                                        whileHover={{ scale: 1.02, boxShadow: "0 6px 20px rgba(0,0,0,0.08)" }}
+                                    >
                                         <div className={styles.offerLeft}>
-                                            <div className={styles.offerPulseTitle}>{offer.request_title || "Solicitare fără titlu"}</div>
+                                            <div className={styles.offerPulseTitle}>{offer.request_title || "Untitled request"}</div>
                                             <div className={styles.offerMeta}>
                                                 <div>
                                                     De la: <strong>@{offer.proposer}</strong>
@@ -1709,7 +1848,7 @@ export default function Profile() {
                                                 </div>
                                                 {offer.total_price !== offer.initial_price && (
                                                     <div>
-                                                        Prima ofertă:{" "}
+                                                        First offer:{" "}
                                                         <strong>{formatCurrency(offer.initial_price, "lei")}</strong>
                                                     </div>
                                                 )}
@@ -1720,15 +1859,15 @@ export default function Profile() {
                                         <div className={styles.offerActions}>
                                             {offer.status === "pending" && offer.last_offer_by !== user.id ? (
                                                 <>
-                                                    <button onClick={() => openAcceptOfferModal(offer)} className={styles.acceptBtn}>
-                                                        Acceptă
-                                                    </button>
-                                                    <button onClick={() => openDeclineOfferModal(offer)} className={styles.rejectBtn}>
-                                                        Refuză
-                                                    </button>
-                                                    <button onClick={() => openCounterOfferModal(offer)} className={styles.counterBtn}>
-                                                        Contraofertă
-                                                    </button>
+                                                    <motion.button {...btnMotion} onClick={() => openAcceptOfferModal(offer)} className={styles.acceptBtn}>
+                                                        Accept
+                                                    </motion.button>
+                                                    <motion.button {...btnMotion} onClick={() => openDeclineOfferModal(offer)} className={styles.rejectBtn}>
+                                                        Decline
+                                                    </motion.button>
+                                                    <motion.button {...btnMotion} onClick={() => openCounterOfferModal(offer)} className={styles.counterBtn}>
+                                                        Counteroffer
+                                                    </motion.button>
                                                 </>
                                             ) : (
                                                 <div className={styles.smallNote}>
@@ -1738,25 +1877,29 @@ export default function Profile() {
                                                 </div>
                                             )}
                                         </div>
-                                    </div>
+                                    </motion.div>
                                 ))}
                             </div>
-                        </div>
-                    </div>
+                        </motion.div>
+                    </motion.div>
 
-                    <div className={styles.contentArea}>
-                        <div className={styles.card}>
+                    <motion.div className={styles.contentArea}>
+                        <motion.div
+                            className={styles.card}
+                            whileHover={{ y: -2, boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
+                            transition={{ duration: 0.2 }}
+                        >
                             <div className={styles.pulsesHeader}>
-                                <h2 className={styles.sectionTitle}>Ofertele mele de ajutor</h2>
+                                <h2 className={styles.sectionTitle}>My offers to help</h2>
                                 <p className={styles.sectionSubtitle}>
-                                    Aici vezi toate ofertele pe care le-ai trimis pentru a ajuta alți utilizatori.
+                                    Here you can see all the offers you’ve sent to help other users.
                                 </p>
                             </div>
 
                             <div className={styles.offersList}>
-                                {sentOffersLoading && <p>Se încarcă propunerile...</p>}
+                                {sentOffersLoading && <p>Proposals loading...</p>}
                                 {!sentOffersLoading && sentRequestOffers.length === 0 && (
-                                    <p className={styles.emptyState}>Nu ai trimis încă nicio ofertă de ajutor.</p>
+                                    <p className={styles.emptyState}>You haven’t sent any help offers yet.</p>
                                 )}
 
                                 {sentRequestOffers.map((proposal) => (
@@ -1768,11 +1911,11 @@ export default function Profile() {
                                                     Status: <strong>{proposal.status}</strong>
                                                 </div>
                                                 <div>
-                                                    Preț propus: <strong>{formatCurrency(proposal.total_price, "lei")}</strong>
+                                                    Proposed price: <strong>{formatCurrency(proposal.total_price, "lei")}</strong>
                                                 </div>
                                                 {proposal.initial_price && proposal.initial_price !== proposal.total_price && (
                                                     <div>
-                                                        Preț inițial: <strong>{formatCurrency(proposal.initial_price, "lei")}</strong>
+                                                        Initial price: <strong>{formatCurrency(proposal.initial_price, "lei")}</strong>
                                                     </div>
                                                 )}
                                             </div>
@@ -1781,12 +1924,12 @@ export default function Profile() {
                                         <div className={styles.offerActions}>
                                             {/* Option to cancel if still pending and you made the last move */}
                                             {proposal.status === "pending" && (
-                                                <button
+                                                <motion.button {...btnMotion}
                                                     onClick={() => openDeleteOfferModal(proposal)}
                                                     className={styles.rejectBtn}
                                                 >
-                                                    Retrage oferta
-                                                </button>
+                                                    <Undo/> Withdraw offer
+                                                </motion.button>
                                             )}
 
                                             {/* If the Requester sent a counteroffer, you see these options */}
@@ -1794,65 +1937,90 @@ export default function Profile() {
                                                 proposal.total_price !== proposal.initial_price &&
                                                 proposal.last_offer_by !== user.id && (
                                                     <>
-                                                        <button
+                                                        <motion.button {...btnMotion}
                                                             onClick={() => openAcceptOfferModal(proposal)}
                                                             className={styles.acceptBtn}
                                                             style={{ marginLeft: "8px" }}
                                                         >
-                                                            Acceptă prețul nou
-                                                        </button>
-                                                        <button
+                                                            Accept new price
+                                                        </motion.button>
+                                                        <motion.button {...btnMotion}
                                                             onClick={() => openCounterOfferModal(proposal)}
                                                             className={styles.counterBtn}
                                                             style={{ marginLeft: "8px" }}
                                                         >
-                                                            Negociază
-                                                        </button>
+                                                            Negotiate
+                                                        </motion.button>
                                                     </>
                                                 )}
 
                                             {proposal.status === "confirmed" && (
-                                                <div className={styles.smallNote}>Confirmat - Poți începe lucrul!</div>
+                                                <div className={styles.smallNote}>Confirmed — you can start working!</div>
                                             )}
                                             {proposal.status === "declined" && (
-                                                <div className={styles.smallNote}>Oferta a fost respinsă</div>
+                                                <div className={styles.smallNote}>The offer has been declined</div>
                                             )}
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    </div>
+                        </motion.div>
+                    </motion.div>
                 </div>
 
                 {/* Delete Profile Picture Modal */}
+                <AnimatePresence>
                 {showDeleteModal && (
-                    <div className={styles.modalOverlay}>
-                        <div className={styles.modal}>
-                            <h3 className={styles.modalTitle}>Șterge poza de profil?</h3>
+                    <motion.div
+                        className={styles.modalOverlay}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
+                        <motion.div
+                            className={styles.modal}
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <h3 className={styles.modalTitle}>Delete profile picture?</h3>
                             <p className={styles.modalText}>
-                                Această acțiune nu poate fi anulată. Ești sigur că vrei să ștergi poza de profil?
+                                This action cannot be undone. Are you sure you want to delete your profile picture?
                             </p>
                             <div className={styles.modalActions}>
-                                <button onClick={() => setShowDeleteModal(false)} className={styles.modalCancel}>
-                                    Anulează
-                                </button>
-                                <button onClick={handleDeleteProfilePicture} className={styles.modalDelete}>
-                                    Da, șterge
-                                </button>
+                                <motion.button {...btnMotion} onClick={() => setShowDeleteModal(false)} className={styles.modalCancel}>
+                                    Cancel
+                                </motion.button>
+                                <motion.button {...btnMotion} onClick={handleDeleteProfilePicture} className={styles.modalDelete}>
+                                    Yes, delete
+                                </motion.button>
                             </div>
-                        </div>
-                    </div>
+                        </motion.div>
+                    </motion.div>
                 )}
+                </AnimatePresence>
 
-                {/* Counteroffer Modal */}
+
+                <AnimatePresence>
                 {counterModal.show && (
-                    <div className={styles.modalOverlay}>
-                        <div className={styles.modal}>
-                            <h3 className={styles.modalTitle}>Trimite contraofertă</h3>
-                            <p className={styles.modalText}>Introdu noul preț total (valoare numerică, ex: 150.00):</p>
+                    <motion.div
+                        className={styles.modalOverlay}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
+                        <motion.div
+                            className={styles.modal}
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <h3 className={styles.modalTitle}>Send counteroffer</h3>
+                            <p className={styles.modalText}>Enter the new total price (numeric value, e.g. 150.00):</p>
                             <div className={styles.inputGroup}>
-                                <label className={styles.inputLabel}>Preț total</label>
+                                <label className={styles.inputLabel}>Total price</label>
                                 <input
                                     type="number"
                                     step="0.01"
@@ -1863,24 +2031,34 @@ export default function Profile() {
                                 />
                             </div>
                             <div className={styles.modalActions}>
-                                <button onClick={closeCounterModal} className={styles.modalCancel}>
-                                    Anulează
-                                </button>
-                                <button onClick={handleSubmitCounter} className={styles.saveButton}>
-                                    Trimite contraofertă
-                                </button>
+                                <motion.button {...btnMotion} onClick={closeCounterModal} className={styles.modalCancel}>
+                                    Cancel
+                                </motion.button>
+                                <motion.button {...btnMotion} onClick={handleSubmitCounter} className={styles.saveButton}>
+                                    Send counteroffer
+                                </motion.button>
                             </div>
-                        </div>
-                    </div>
+                        </motion.div>
+                    </motion.div>
                 )}
+                </AnimatePresence>
 
+
+                <AnimatePresence>
                 {counterOfferModal.show && (
-                    <div className={styles.modalOverlay}>
-                        <div className={styles.modal}>
-                            <h3 className={styles.modalTitle}>Trimite contraofertă</h3>
-                            <p className={styles.modalText}>Introdu noul preț total (valoare numerică, ex: 150.00):</p>
+                    <motion.div
+                                className={styles.modalOverlay}
+                                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <motion.div
+                                    className={styles.modal}
+                                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    transition={{ duration: 0.2 }}>
+                            <h3 className={styles.modalTitle}>Send counteroffer</h3>
+                            <p className={styles.modalText}>Enter the new total price (numeric value, e.g. 150.00):</p>
                             <div className={styles.inputGroup}>
-                                <label className={styles.inputLabel}>Preț total</label>
+                                <label className={styles.inputLabel}>Total price</label>
                                 <input
                                     type="number"
                                     step="0.01"
@@ -1891,171 +2069,214 @@ export default function Profile() {
                                 />
                             </div>
                             <div className={styles.modalActions}>
-                                <button onClick={closeCounterOfferModal} className={styles.modalCancel}>
-                                    Anulează
-                                </button>
-                                <button onClick={handleSubmitRequestCounter} className={styles.saveButton}>
-                                    Trimite contraofertă
-                                </button>
+                                <motion.button {...btnMotion} onClick={closeCounterOfferModal} className={styles.modalCancel}>
+                                    Cancel
+                                </motion.button>
+                                <motion.button {...btnMotion} onClick={handleSubmitRequestCounter} className={styles.saveButton}>
+                                    Send counteroffer
+                                </motion.button>
                             </div>
-                        </div>
-                    </div>
+                        </motion.div>
+                    </motion.div>
                 )}
+                </AnimatePresence>
 
                 {/* Accept Confirmation Modal */}
+                <AnimatePresence>
                 {acceptModal.show && (
-                    <div className={styles.modalOverlay}>
-                        <div className={styles.modal}>
-                            <h3 className={styles.modalTitle}>Acceptă oferta?</h3>
-                            <p className={styles.modalText}>Ești sigur că vrei să accepți această ofertă?</p>
+                    <motion.div className={styles.modalOverlay}>
+                        <motion.div className={styles.modal}>
+                            <h3 className={styles.modalTitle}>Accept offer?</h3>
+                            <p className={styles.modalText}>Are you sure you want to accept this offer?</p>
                             <div className={styles.modalActions}>
-                                <button onClick={closeAcceptModal} className={styles.modalCancel}>
-                                    Anulează
-                                </button>
-                                <button
+                                <motion.button {...btnMotion} onClick={closeAcceptModal} className={styles.modalCancel}>
+                                    Cancel
+                                </motion.button>
+                                <motion.button {...btnMotion}
                                     onClick={() => handleAcceptOffer(acceptModal.id)}
                                     className={styles.saveButton}
                                 >
-                                    Acceptă
-                                </button>
+                                    Accept
+                                </motion.button>
                             </div>
-                        </div>
-                    </div>
+                        </motion.div>
+                    </motion.div>
                 )}
+                </AnimatePresence>
 
+                <AnimatePresence>
                 {acceptOfferModal.show && (
-                    <div className={styles.modalOverlay}>
-                        <div className={styles.modal}>
-                            <h3 className={styles.modalTitle}>Acceptă oferta?</h3>
-                            <p className={styles.modalText}>Ești sigur că vrei să accepți această ofertă?</p>
+                    <motion.div className={styles.modalOverlay}
+                                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <motion.div className={styles.modal}
+                                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    transition={{ duration: 0.2 }}>
+                            <h3 className={styles.modalTitle}>Accept offer?</h3>
+                            <p className={styles.modalText}>Are you sure you want to accept this offer?</p>
                             <div className={styles.modalActions}>
-                                <button onClick={closeAcceptOfferModal} className={styles.modalCancel}>
-                                    Anulează
-                                </button>
-                                <button
+                                <motion.button {...btnMotion} onClick={closeAcceptOfferModal} className={styles.modalCancel}>
+                                    Cancel
+                                </motion.button>
+                                <motion.button {...btnMotion}
                                     onClick={() => handleAcceptRequestOffer(acceptOfferModal.id)}
                                     className={styles.saveButton}
                                 >
-                                    Acceptă
-                                </button>
+                                    Accept
+                                </motion.button>
                             </div>
-                        </div>
-                    </div>
+                        </motion.div>
+                    </motion.div>
                 )}
+                </AnimatePresence>
 
+                <AnimatePresence>
                 {deletePulseModal.show && (
-                    <div className={styles.modalOverlay}>
-                        <div className={styles.modal}>
-                            <h3 className={styles.modalTitle}>Șterge anunțul?</h3>
+                    <motion.div className={styles.modalOverlay}
+                                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <motion.div className={styles.modal}
+                                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    transition={{ duration: 0.2 }}>
+                            <h3 className={styles.modalTitle}>Delete the listing?</h3>
                             <p className={styles.modalText}>
-                                Această acțiune nu poate fi anulată. Ești sigur că vrei să ștergi acest anunț?
+                                This action cannot be undone. Are you sure you want to delete this listing?
                             </p>
                             <div className={styles.modalActions}>
-                                <button onClick={closeDeletePulseModal} className={styles.modalCancel}>
-                                    Anulează
-                                </button>
-                                <button onClick={handleDeletePulse} className={styles.modalDelete}>
-                                    Da, șterge
-                                </button>
+                                <motion.button {...btnMotion} onClick={closeDeletePulseModal} className={styles.modalCancel}>
+                                    Cancel
+                                </motion.button>
+                                <motion.button {...btnMotion} onClick={handleDeletePulse} className={styles.modalDelete}>
+                                    Yes, delete
+                                </motion.button>
                             </div>
-                        </div>
-                    </div>
+                        </motion.div>
+                    </motion.div>
                 )}
+                </AnimatePresence>
 
+                <AnimatePresence>
                 {/* Delete Proposal Modal */}
                 {deleteProposalModal.show && (
-                    <div className={styles.modalOverlay}>
-                        <div className={styles.modal}>
-                            <h3 className={styles.modalTitle}>Anulează propunerea?</h3>
+                    <motion.div className={styles.modalOverlay}
+                                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <motion.div className={styles.modal}
+                                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    transition={{ duration: 0.2 }}>
+                            <h3 className={styles.modalTitle}>Cancel propose?</h3>
                             <p className={styles.modalText}>
-                                Această acțiune nu poate fi anulată. Ești sigur că vrei să anulezi propunerea?
+                                This can’t be undone. Cancel this proposal?
                             </p>
                             <div className={styles.modalActions}>
-                                <button onClick={closeDeleteModal} className={styles.modalCancel}>
-                                    Anulează
-                                </button>
-                                <button onClick={handleDeleteProposal} className={styles.modalDelete}>
-                                    Da, anulează
-                                </button>
+                                <motion.button {...btnMotion} onClick={closeDeleteModal} className={styles.modalCancel}>
+                                    Cancel
+                                </motion.button>
+                                <motion.button {...btnMotion} onClick={handleDeleteProposal} className={styles.modalDelete}>
+                                   Yes, cancel
+                                </motion.button>
                             </div>
-                        </div>
-                    </div>
+                        </motion.div>
+                    </motion.div>
                 )}
+                </AnimatePresence>
 
-
+                <AnimatePresence>
                 {deleteOfferModal.show && (
-                    <div className={styles.modalOverlay}>
-                        <div className={styles.modal}>
-                            <h3 className={styles.modalTitle}>Anulează propunerea?</h3>
+                    <motion.div className={styles.modalOverlay}
+                                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <motion.div className={styles.modal}
+                                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    transition={{ duration: 0.2 }}>
+                            <h3 className={styles.modalTitle}>Cancel proposal?</h3>
                             <p className={styles.modalText}>
-                                Această acțiune nu poate fi anulată. Ești sigur că vrei să retragi propunerea?
+                                This action cannot be undone. Are you sure you want to withdraw the proposal?
                             </p>
                             <div className={styles.modalActions}>
-                                <button onClick={closeDeleteOfferModal} className={styles.modalCancel}>
-                                    Anulează
-                                </button>
-                                <button
+                                <motion.button {...btnMotion} onClick={closeDeleteOfferModal} className={styles.modalCancel}>
+                                    Cancel
+                                </motion.button>
+                                <motion.button {...btnMotion}
                                     onClick={() => handleDeleteRequestOffer(deleteOfferModal.id)}
                                     className={styles.modalDelete}
                                 >
-                                    Da, retrage
-                                </button>
+                                    Yes,
+                                </motion.button>
                             </div>
-                        </div>
-                    </div>
+                        </motion.div>
+                    </motion.div>
                 )}
+                </AnimatePresence>
 
+                <AnimatePresence>
                 {/* Decline Confirmation Modal */}
                 {declineModal.show && (
-                    <div className={styles.modalOverlay}>
-                        <div className={styles.modal}>
-                            <h3 className={styles.modalTitle}>Refuză oferta?</h3>
-                            <p className={styles.modalText}>Ești sigur că vrei să refuzi această ofertă?</p>
+                    <motion.div className={styles.modalOverlay}
+                                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <motion.div className={styles.modal}
+                                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    transition={{ duration: 0.2 }}>
+                            <h3 className={styles.modalTitle}>Refuse the offer?</h3>
+                            <p className={styles.modalText}>Are you sure you want to decline this offer?</p>
                             <div className={styles.modalActions}>
-                                <button onClick={closeDeclineModal} className={styles.modalCancel}>
-                                    Anulează
-                                </button>
-                                <button
+                                <motion.button {...btnMotion} onClick={closeDeclineModal} className={styles.modalCancel}>
+                                    Cancel
+                                </motion.button>
+                                <motion.button {...btnMotion}
                                     onClick={() => handleDeclineOffer(declineModal.id)}
                                     className={styles.modalDelete}
                                 >
-                                    Refuză
-                                </button>
+                                    Decline
+                                </motion.button>
                             </div>
-                        </div>
-                    </div>
+                        </motion.div>
+                    </motion.div>
                 )}
+                </AnimatePresence>
 
+                <AnimatePresence>
                 {declineOfferModal.show && (
-                    <div className={styles.modalOverlay}>
-                        <div className={styles.modal}>
-                            <h3 className={styles.modalTitle}>Refuză oferta?</h3>
-                            <p className={styles.modalText}>Ești sigur că vrei să refuzi această ofertă?</p>
+                    <motion.div className={styles.modalOverlay}
+                                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <motion.div className={styles.modal}
+                                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    transition={{ duration: 0.2 }}>
+                            <h3 className={styles.modalTitle}>Decline the offer?</h3>
+                            <p className={styles.modalText}>Are you sure you want to decline this offer?</p>
                             <div className={styles.modalActions}>
-                                <button onClick={closeDeclineOfferModal} className={styles.modalCancel}>
-                                    Anulează
-                                </button>
-                                <button
+                                <motion.button {...btnMotion} onClick={closeDeclineOfferModal} className={styles.modalCancel}>
+                                    Cancel
+                                </motion.button>
+                                <motion.button {...btnMotion}
                                     onClick={() => handleDeclineRequestOffer(declineOfferModal.id)}
                                     className={styles.modalDelete}
                                 >
-                                    Refuză
-                                </button>
+                                    Decline
+                                </motion.button>
                             </div>
-                        </div>
-                    </div>
+                        </motion.div>
+                    </motion.div>
                 )}
-
+                </AnimatePresence>
                 {verifiedModal && (
                     <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
                         <div className="bg-white rounded-xl shadow-lg p-6 w-80 max-w-sm relative">
                             {/* Close button */}
-                            <button
+                            <motion.button {...btnMotion}
                                 onClick={() => setVerifiedModal(false)}
                                 className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
                             >
                                 ✕
-                            </button>
+                            </motion.button>
 
                             {/* Modal content */}
                             <div className="flex flex-col items-center text-center">
@@ -2064,12 +2285,12 @@ export default function Profile() {
                                 <p className="text-gray-600 mb-4">
                                     You are now a verified neighbour. Enjoy your perks!
                                 </p>
-                                <button
+                                <motion.button {...btnMotion}
                                     onClick={() => setVerifiedModal(false)}
                                     className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full transition-colors"
                                 >
                                     Close
-                                </button>
+                                </motion.button>
                             </div>
                         </div>
                     </div>
