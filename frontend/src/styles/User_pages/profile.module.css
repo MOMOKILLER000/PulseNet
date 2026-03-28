@@ -1,875 +1,1022 @@
-/* =============================
-   Global reset + base
-   ============================= */
-* {
+/* ============================================================
+   CSS CUSTOM PROPERTIES
+   ============================================================ */
+:root {
+    /* Brand colors */
+    --color-primary:        #91b38e;   /* green – buttons, accents, badges */
+    --color-primary-dark:   #7f9f7c;   /* green hover */
+    --color-primary-light:  #e8f0e7;   /* green tint */
+
+    /* Backgrounds */
+    --color-bg:             #f5f5f0;   /* page background */
+    --color-bg-bar:         #91b38e;   /* top green bar */
+    --color-surface:        #ffffff;   /* cards / modals */
+    --color-surface-alt:    #f8fafc;   /* inputs, muted panels */
+    --color-surface-muted:  #f1f5f9;   /* tags, secondary panels */
+
+    /* Text */
+    --color-text:           #4a5568;   /* body / default */
+    --color-text-strong:    #0f172a;   /* headings */
+    --color-text-medium:    #334155;   /* sub-headings */
+    --color-text-subtle:    #64748b;   /* labels, captions */
+    --color-text-faint:     #94a3b8;   /* placeholder, empty states */
+    --color-text-on-primary:#ffffff;   /* text on green */
+
+    /* Borders */
+    --color-border:         #e2e8f0;
+    --color-border-focus:   #91b38e;
+
+    /* Semantic */
+    --color-success:        #16a34a;
+    --color-success-bg:     #f0fdf4;
+    --color-success-border: #dcfce7;
+    --color-success-strong: #0d9488;
+    --color-success-bg-2:   #f0fdfa;
+    --color-success-border-2: #ccfbf1;
+
+    --color-danger:         #ef4444;
+    --color-danger-dark:    #dc2626;
+    --color-danger-bg:      #fef2f2;
+    --color-danger-border:  #fee2e2;
+
+    --color-warning:        #f59e0b;
+    --color-warning-bg:     #fef9c3;
+
+    --color-info:           #3b82f6;
+    --color-info-bg:        #eff6ff;
+    --color-info-border:    #dbeafe;
+
+    --color-indigo:         #4f46e5;
+    --color-indigo-dark:    #4338ca;
+    --color-indigo-bg:      #eef2ff;
+    --color-indigo-border:  #e0e7ff;
+
+    --color-purple:         #7c3aed;
+    --color-purple-bg:      #f5f3ff;
+    --color-purple-border:  #ede9fe;
+
+    --color-orange:         #ea580c;
+    --color-orange-bg:      #fff7ed;
+    --color-orange-border:  #fed7aa;
+
+    /* Shadows */
+    --shadow-sm:   0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+    --shadow-md:   0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.05);
+    --shadow-lg:   0 12px 30px rgba(0,0,0,.12);
+    --shadow-focus-primary: 0 0 0 4px rgba(145,179,142,.25);
+    --shadow-focus-danger:  0 0 0 4px rgba(239, 68, 68,.15);
+
+    /* Radius */
+    --radius-sm:   6px;
+    --radius-md:   8px;
+    --radius-lg:   12px;
+    --radius-xl:   16px;
+    --radius-2xl:  20px;
+    --radius-3xl:  24px;
+    --radius-full: 9999px;
+
+    /* Transitions */
+    --transition-fast:   all 0.15s ease;
+    --transition-base:   all 0.2s ease;
+    --transition-bounce: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+*,
+*::before,
+*::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: Arial, Helvetica, sans-serif;
+    font-family: 'Inter', sans-serif;
 }
 
-/* Background */
+/* ============================================================
+   LAYOUT
+   ============================================================ */
 .body {
-    background: #e9e6e6;
-    color: black;
-    margin: 0;
-    padding: 0;
+    background-color: var(--color-bg);
+    color: var(--color-text);
     min-height: 100vh;
+    width: 100%;
+    position: relative;
 }
 
-/* Main container */
+.topGreenBar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 250px;
+    background-color: var(--color-bg-bar);
+    z-index: 0;
+}
+
 .mainContainer {
-    max-width: 1300px;
-    margin: 0 auto;
-    padding: 20px;
+    width: 100%;
     min-height: 100vh;
+    position: relative;
+    z-index: 1;
+}
+
+.navWrapper {
+    width: 100%;
 }
 
 .container {
     @apply max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-8;
 }
 
-/* COVER & HEADER CARD */
+/* ============================================================
+   HEADER CARD
+   ============================================================ */
 .coverPhoto {
-    @apply h-40 sm:h-48 w-full rounded-t-3xl bg-red-700 from-indigo-500 via-purple-500 to-pink-500 object-cover shadow-sm;
+    @apply h-40 sm:h-48 w-full rounded-t-3xl bg-red-700 object-cover shadow-sm;
 }
 
 .headerCard {
-    @apply bg-white rounded-b-3xl shadow-sm border-x border-b border-slate-200 px-6 sm:px-10 pb-10 relative mb-8;
+    @apply bg-white rounded-3xl px-6 sm:px-6 pb-6 relative mb-8;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    margin-top: 7rem;
+    flex-direction: column;
 }
 
 .headerLayout {
     @apply flex flex-col sm:flex-row gap-4 md:gap-8 items-start;
 }
 
-/* AVATAR & TRUST */
+/* ============================================================
+   AVATAR & TRUST BADGE
+   ============================================================ */
 .avatarSection {
-    @apply flex flex-col items-center gap-4 -mt-16 mx-auto sm:-mt-20 z-10 shrink-0;
+    @apply flex flex-col items-center gap-4 -mt-20 mx-auto sm:-mt-24 z-10 shrink-0;
+    width: 100%;
 }
 
+
+
 .avatarWrapper {
-    /* Ensure this is relative so the button can be absolute */
     @apply relative rounded-full p-1.5 bg-white shadow-md;
 }
 
-.editButton {
-    @apply absolute bottom-2 right-2
-    w-10 h-10
-    bg-white text-indigo-600
-    rounded-full shadow-lg border-2 border-slate-50
-    flex items-center justify-center
-    transition-all duration-200
-    hover:scale-110 hover:bg-indigo-50 active:scale-95
-    cursor-pointer z-20;
+.avatar {
+    @apply w-32 h-32 sm:w-40 sm:h-40 rounded-full border-4 border-slate-50 shadow-inner bg-cover bg-center;
+    background-color: var(--color-surface-muted);
 }
+
+/* -- Overlay action buttons -- */
+.editButton {
+    @apply absolute bottom-2 right-2 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer z-20;
+    background: var(--color-surface);
+    color: var(--color-indigo);
+    border: 2px solid var(--color-surface-muted);
+    box-shadow: var(--shadow-md);
+    transition: var(--transition-base);
+}
+.editButton:hover  { background: var(--color-indigo-bg); transform: scale(1.1); }
+.editButton:active { transform: scale(0.95); }
 
 .deleteButton {
-    @apply absolute top-2 right-3
-    w-8 h-8
-    bg-red-200 text-white
-    rounded-full shadow-md
-    flex items-center justify-center
-    hover:bg-red-600 active:scale-95
-    transition-all duration-200
-    cursor-pointer z-20;
+    @apply absolute top-2 right-3 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer z-20;
+    background: #fecaca;
+    color: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition-base);
 }
+.deleteButton:hover  { background: var(--color-danger); }
+.deleteButton:active { transform: scale(0.95); }
 
-.editIcon {
-    @apply w-5 h-5;
-}
+.editIcon { @apply w-5 h-5; }
 
-.avatar {
-    @apply w-32 h-32 sm:w-40 sm:h-40 rounded-full bg-slate-200 border-4 border-slate-50 shadow-inner bg-cover bg-center;
-}
-
-/* Base badge */
+/* -- Trust badge base -- */
 .trustBadge {
-    @apply inline-flex items-center gap-2 px-3 py-2 rounded-full font-bold text-[13px] text-white shadow-md capitalize;
+    @apply inline-flex items-center gap-2 px-3 py-2 rounded-full font-bold capitalize;
+    font-size: 13px;
+    color: var(--color-text-on-primary);
+    box-shadow: var(--shadow-sm);
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
-/* Variants */
-.commentsExplorer {
-    @apply bg-gray-400;
-}
+/* Trust badge variants */
+.commentsExplorer   { background-color: #9ca3af; }
+.commentsObserver   { background-color: var(--color-surface-alt); color: var(--color-text-subtle); border: 1px solid var(--color-border); }
+.commentsActive     { background-color: var(--color-success-bg-2); color: var(--color-success-strong); border: 1px solid var(--color-success-border-2); }
+.commentsTrusted    { background-color: var(--color-success-bg);  color: var(--color-success); border: 1px solid var(--color-success-border); }
+.commentsProven     { background-color: var(--color-primary); }
+.commentsElite      { background-color: var(--color-purple-bg); color: var(--color-purple); border: 1px solid var(--color-purple-border); }
+.commentsLegend     { background-color: #fffdf3; color: #b45309; border: 1px solid #fde68a; }
+.commentsRisky      { background-color: #f97316; }
+.commentsDangerous  { background-color: var(--color-danger); }
 
-.commentsActive {
-    @apply bg-blue-500;
-}
+.trustIcon  { @apply text-lg; }
+.trustValue { @apply text-sm font-bold tracking-wide; }
 
-.commentsTrusted {
-    @apply bg-green-500;
-}
-
-.commentsObserver{
-    @apply bg-red-400
-}
-.commentsProven {
-    @apply bg-teal-500;
-}
-
-.commentsElite {
-    @apply bg-gradient-to-tr from-purple-700 to-purple-500;
-}
-
-.commentsLegend {
-    @apply bg-gradient-to-tr from-yellow-500 to-yellow-300 text-slate-800;
-}
-
-.commentsRisky {
-    @apply bg-orange-500;
-}
-
-.commentsDangerous {
-    @apply bg-red-500;
-}
-
-.trustIcon {
-    @apply text-lg;
-}
-
-.trustValue {
-    @apply text-sm font-bold tracking-wide;
-}
-
-/* PROFILE INFO */
+/* ============================================================
+   PROFILE INFO
+   ============================================================ */
 .profileInfo {
-    @apply pt-4 sm:pt-6 flex-1 w-full;
+    @apply pt-2 sm:pt-4 flex-1 w-full;
+    min-width: 0;
 }
 
 .infoContent {
     @apply flex flex-col items-start;
 }
 
-.actionWrapper {
-    /* Mobile: Centered under the content, relative positioning */
-    @apply relative mt-0 flex justify-center gap-0 w-full;
-
-    /* Desktop (768px and up): Back to the top-right corner */
-    @apply md:absolute md:top-4 md:right-4 md:mt-0 md:w-auto;
-}
-
-/* Base button styles */
-.btnBase {
-    @apply px-4 py-2 mr-2 text-sm font-semibold rounded-lg cursor-pointer transition-all duration-200 border-none outline-none;
-}
-
-.msgBtn {
-    @apply btnBase bg-orange-50 text-orange-600 hover:bg-orange-100 active:scale-95;
-    /* Optional: adds a subtle border to match the soft vibe */
-    @apply border border-orange-200;
-}
-
-/* Follow: blue-600 */
-.followBtn {
-    @apply btnBase bg-blue-600 text-white hover:bg-blue-700 hover:-translate-y-0.5 shadow-sm active:scale-95;
-}
-
-/* Unfollow: red-100/600 */
-.unfollowBtn {
-    @apply btnBase bg-red-100 text-red-600 hover:bg-red-200 active:scale-95;
-}
-
-/* Requested: gray-100 */
-.pendingBtn {
-    @apply btnBase bg-gray-100 text-gray-600 cursor-default;
-}
-
-.titleRow {
-    @apply flex items-center gap-3 mb-1;
-}
-
 .title {
-    @apply text-3xl font-extrabold text-slate-900 tracking-tight;
-}
-
-.verified {
-    @apply inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700;
-}
-
-.askVerified {
-    @apply inline-flex items-center mt-2 ml-1 relative bg-yellow-400 px-2 py-1 rounded-full
-    hover:bg-yellow-500 transition-colors duration-200 cursor-pointer;
+    @apply text-2xl font-extrabold tracking-tight mb-0;
+    color: var(--color-text-strong);
 }
 
 .username {
-    @apply text-slate-500 font-medium text-sm mb-4;
+    @apply font-medium text-sm mb-2;
+    color: var(--color-text-subtle);
 }
 
 .biography {
-    @apply text-slate-700 max-w-2xl leading-relaxed mb-6 text-base;
+    margin-top: 20px;
+    margin-bottom: 1.5rem;
+    max-width: 100%;
+    line-height: 1.6;
+    color: var(--color-text);
+    font-size: 0.95rem;
+    text-align: left;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
-.statusBottomRight {
-    @apply absolute bottom-4 right-4;
+.titleRow {
+    @apply flex justify-between items-start gap-3 mb-1;
 }
 
-.statusRowInline {
-    @apply flex items-center gap-3;
+.verified {
+    @apply inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full text-xs font-bold;
+    background: var(--color-info-bg);
+    color: var(--color-info);
 }
 
-.statusRow {
-    @apply flex items-center gap-4 mt-3 flex-wrap;
+.askVerified {
+    @apply inline-flex items-center mt-2 ml-1 relative px-2 py-1 rounded-full cursor-pointer;
+    background: var(--color-warning);
+    transition: var(--transition-base);
+}
+.askVerified:hover { background: #d97706; }
+
+/* ============================================================
+   ACTION BUTTONS (follow / message)
+   ============================================================ */
+.actionWrapper {
+    @apply relative mt-0 flex justify-center gap-0 w-full;
+    @apply md:absolute md:top-4 md:right-4 md:mt-0 md:w-auto;
 }
 
-.statusItem {
-    @apply flex items-center gap-2;
+.btnBase {
+    @apply px-4 py-2 mr-2 text-sm font-semibold rounded-lg cursor-pointer;
+    border: none;
+    outline: none;
+    transition: var(--transition-base);
 }
 
-.statusText {
-    @apply text-sm font-medium capitalize text-gray-700;
+.msgBtn {
+    @apply btnBase;
+    background: var(--color-orange-bg);
+    color: var(--color-orange);
+    border: 1px solid var(--color-orange-border);
+}
+.msgBtn:hover { background: #fed7aa; }
+
+.followBtn {
+    @apply btnBase shadow-sm;
+    background: var(--color-info);
+    color: var(--color-text-on-primary);
+}
+.followBtn:hover   { background: #2563eb; transform: translateY(-1px); }
+.followBtn:active  { transform: scale(0.95); }
+
+.unfollowBtn {
+    @apply btnBase;
+    background: #fee2e2;
+    color: var(--color-danger);
+}
+.unfollowBtn:hover  { background: #fecaca; }
+.unfollowBtn:active { transform: scale(0.95); }
+
+.pendingBtn {
+    @apply btnBase cursor-default;
+    background: var(--color-surface-muted);
+    color: var(--color-text-subtle);
 }
 
-.statusOnline {
-    @apply text-green-500 text-lg;
+/* ============================================================
+   EDIT PROFILE BUTTON
+   ============================================================ */
+.resWrapperForButtonAndTag {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
 }
-
-.statusAway {
-    @apply text-yellow-500 text-lg;
-}
-
-.statusDnd {
-    @apply text-red-500 text-lg;
-}
-
-.statusOffline {
-    @apply text-gray-400 text-lg;
-}
-
-.sleepingBadge {
-    @apply bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full font-medium;
-}
-
 
 .editProfileBtn {
-    @apply px-5 py-2.5 bg-white border border-slate-300 text-slate-700 font-semibold rounded-full hover:bg-slate-50 hover:text-slate-900 transition-all shadow-sm focus:ring-2 focus:ring-slate-200 outline-none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: var(--color-primary);
+    color: var(--color-text-on-primary);
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    font-size: 16px;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: var(--transition-base);
+    position: static;
 }
 
-/* TABS (SEGMENTED CONTROL) */
+.editProfileBtn:hover {
+    background-color: var(--color-primary-dark);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.editProfileBtn:active {
+    transform: translateY(0);
+}
+
+/* ============================================================
+   STATUS
+   ============================================================ */
+.statusBottomRight { @apply absolute bottom-4 right-4; }
+.statusRowInline   { @apply flex items-center gap-3; }
+.statusRow         { @apply flex items-center gap-4 mt-3 flex-wrap; }
+.statusItem        { @apply flex items-center gap-2; }
+
+.statusText    { @apply text-sm font-medium capitalize; color: var(--color-text-medium); }
+.statusOnline  { @apply text-lg; color: #22c55e; }
+.statusAway    { @apply text-lg; color: var(--color-warning); }
+.statusDnd     { @apply text-lg; color: var(--color-danger); }
+.statusOffline { @apply text-lg; color: var(--color-text-faint); }
+
+.sleepingBadge {
+    @apply text-xs px-3 py-1 rounded-full font-medium;
+    background: var(--color-indigo-bg);
+    color: var(--color-indigo);
+}
+
+/* ============================================================
+   TABS (SEGMENTED CONTROL)
+   ============================================================ */
 .tabsContainer {
     @apply flex justify-center sm:justify-start mb-8;
 }
 
 .tabs {
-    @apply flex gap-1 bg-slate-200/60 p-1.5 rounded-2xl w-full sm:w-auto overflow-x-auto;
+    @apply flex gap-1 p-1.5 rounded-2xl w-full sm:w-auto overflow-x-auto;
+    background-color: rgba(203, 213, 225, 0.5);
 }
 
 .tab {
-    @apply flex-1 sm:flex-none px-6 py-2.5 text-sm font-medium text-slate-600 rounded-xl hover:text-slate-900 hover:bg-slate-200/50 transition-all whitespace-nowrap;
+    @apply flex-1 sm:flex-none px-6 py-2.5 text-sm font-medium rounded-xl whitespace-nowrap transition-all;
+    color: var(--color-text-subtle);
 }
+.tab:hover { color: var(--color-text-medium); background: rgba(203,213,225,0.4); }
 
 .activeTab {
-    @apply flex-1 sm:flex-none px-6 py-2.5 text-sm font-bold text-indigo-700 bg-white shadow-sm rounded-xl transition-all whitespace-nowrap;
+    @apply flex-1 sm:flex-none px-6 py-2.5 text-sm font-bold rounded-xl whitespace-nowrap transition-all shadow-sm;
+    background: var(--color-surface);
+    color: var(--color-indigo);
 }
 
-/* CONTENT AREAS */
-.contentArea {
-    @apply w-full mb-8; /* added bottom spacing between content areas */
-}
+/* ============================================================
+   CONTENT & CARDS
+   ============================================================ */
+.contentArea { @apply w-full mb-8; }
 
 .card {
-    @apply bg-white rounded-3xl shadow-sm border border-slate-200 p-8;
+    @apply bg-white rounded-3xl p-8;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
 }
 
 .sectionTitle {
-    @apply text-xl font-extrabold text-slate-900 mb-2;
+    @apply text-xl font-extrabold mb-2;
+    color: var(--color-text-strong);
 }
 
-/* subtitle used in offers header */
 .sectionSubtitle {
-    @apply text-sm text-slate-500 max-w-xl mb-4;
+    @apply text-sm max-w-xl mb-4;
+    color: var(--color-text-subtle);
 }
 
-/* OVERVIEW STATS */
-.statsGrid {
-    @apply grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6;
-}
+/* ============================================================
+   STATS GRID
+   ============================================================ */
+.statsGrid { @apply grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6; }
 
 .statBox {
-    @apply bg-white border border-slate-100 rounded-3xl p-6 flex flex-col items-center justify-center text-center shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1;
+    @apply bg-white rounded-3xl p-6 flex flex-col items-center justify-center text-center;
+    border: 1px solid #f1f5f9;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition-base);
 }
+.statBox:hover { box-shadow: var(--shadow-md); transform: translateY(-4px); }
 
 .statLabel {
-    @apply text-xs font-bold text-slate-400 uppercase tracking-wider mb-2;
+    @apply text-xs font-bold uppercase tracking-wider mb-2;
+    color: var(--color-text-faint);
 }
 
 .statValue {
-    @apply text-3xl font-black text-slate-800;
+    @apply text-3xl font-black;
+    color: var(--color-text-medium);
 }
 
-/* SKILLS */
-.skillGrid {
-    @apply grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4;
-}
+/* ============================================================
+   SKILLS
+   ============================================================ */
+.skillGrid { @apply grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4; }
 
 .skillCard {
-    @apply bg-slate-50 border border-slate-100 rounded-2xl p-4 flex justify-between items-center hover:border-indigo-200 transition-colors;
+    @apply rounded-2xl p-4 flex justify-between items-center transition-colors;
+    background: var(--color-surface-alt);
+    border: 1px solid #f1f5f9;
 }
+.skillCard:hover { border-color: var(--color-indigo-border); }
 
-.skillName {
-    @apply font-semibold text-slate-800;
-}
+.skillName  { @apply font-semibold; color: var(--color-text-medium); }
 
 .skillLevel {
-    @apply text-xs uppercase px-3 py-1 rounded-full bg-white border border-slate-200 text-slate-600 font-bold shadow-sm;
+    @apply text-xs uppercase px-3 py-1 rounded-full font-bold;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-subtle);
+    box-shadow: var(--shadow-sm);
 }
 
-/* =============================
-   OBJECT / PULSE CARDS (IMPROVED)
-   ============================= */
+/* ============================================================
+   OBJECT / PULSE CARDS
+   ============================================================ */
+.objectGrid { @apply grid grid-rows-4 gap-4; }
 
-/* Grid - 1 column by default; you may change to 2-col on wider screens if needed */
-.objectGrid {
-    @apply grid grid-cols-1 gap-4;
-}
-
-/* Card base: smaller, cleaner, horizontal layout */
 .objectCard {
-    @apply bg-white border border-slate-200 rounded-2xl shadow-sm
-    flex flex-col sm:flex-row gap-4 p-4 items-start sm:items-center
-    transition-all duration-300 hover:shadow-md hover:-translate-y-0.5;
+    @apply bg-white rounded-2xl flex flex-col sm:flex-row gap-4 p-4 items-start sm:items-center transition-all duration-300;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
     position: relative;
 }
+.objectCard:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
 
-/* Image area */
 .objectImage {
-    @apply flex-shrink-0 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center;
-
+    @apply flex-shrink-0 rounded-xl overflow-hidden flex items-center justify-center;
+    background: var(--color-surface-muted);
     width: 100%;
     height: 180px;
 }
 
-/* Desktop image size */
-@media (min-width: 640px) {
-    .objectImage {
-        width: 120px;
-        height: 120px;
-    }
-}
 
-/* Image fit */
-.pulseImage {
-    @apply w-full h-full object-cover;
-}
+.pulseImage      { @apply w-full h-full object-cover; }
+.imagePlaceholder { @apply text-4xl opacity-40; }
 
-/* Placeholder */
-.imagePlaceholder {
-    @apply text-4xl opacity-40;
-}
+.objectInfo  { @apply flex flex-col gap-1 flex-1 w-full; overflow: hidden; }
 
-/* Info */
-.objectInfo {
-    @apply flex flex-col gap-1 flex-1 w-full;
-    overflow: hidden;
-}
-
-/* Title */
 .objectName {
-    @apply text-base sm:text-lg font-bold text-slate-900;
+    @apply text-base sm:text-lg font-bold;
+    color: var(--color-text-medium);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-/* Description */
 .pulseDescription {
-    @apply text-sm text-slate-500 mb-1 leading-relaxed;
-
+    @apply text-sm mb-1 leading-relaxed;
+    color: var(--color-text-subtle);
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
 
-/* Category */
 .pulseCategory {
-    @apply text-xs text-indigo-600 font-semibold uppercase tracking-wide;
+    @apply text-xs font-semibold uppercase tracking-wide;
+    color: var(--color-indigo);
 }
 
-/* Phone */
-.pulsePhone {
-    @apply text-sm text-slate-600 font-medium;
-}
+.pulsePhone { @apply flex text-sm font-medium; color: var(--color-text); font-weight: 500; font-size: 1.25rem; }
+.pulseDate  { @apply flex text-lg ml-1; font-weight: 700;  color: var(--color-text); }
 
-/* Date */
-.pulseDate {
-    @apply text-xs text-slate-400;
-}
-
-/* Buttons container */
 .objectActions {
-    @apply flex gap-2 flex-wrap mt-2 sm:mt-0;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    width: 100%;
+    justify-content: space-between;
 }
 
-/* Delete / remove button */
+.availableBadge   { @apply px-3 py-1 text-xs rounded-full font-bold; background: #d1fae5; color: #065f46; }
+.unavailableBadge { @apply px-3 py-1 text-xs rounded-full font-bold; background: #fee2e2; color: #991b1b; }
 
-
-/* Availability badges */
-.availableBadge {
-    @apply px-3 py-1 text-xs rounded-full bg-emerald-100 text-emerald-800 font-bold;
-}
-
-.unavailableBadge {
-    @apply px-3 py-1 text-xs rounded-full bg-rose-100 text-rose-800 font-bold;
-}
-
-/* =============================
+/* ============================================================
    EDIT FORM
-   ============================= */
+   ============================================================ */
 .editForm {
-    @apply w-full max-w-2xl bg-slate-50 border border-slate-100 p-6 sm:p-8 rounded-3xl shadow-inner mt-2;
+    @apply w-full max-w-2xl p-6 sm:p-8 rounded-3xl shadow-inner mt-2;
+    background: var(--color-surface-alt);
+    border: 1px solid #f1f5f9;
 }
 
-.editGrid {
-    @apply grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6;
-}
+.editGrid  { @apply grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6; }
 
 .inputGroup {
     @apply flex flex-col gap-1.5 mb-4;
 }
 
-.labelWrapper {
-    @apply flex justify-between items-center;
-}
-
-
-.rangeValue {
-    @apply text-xs font-bold bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full;
-}
+.labelWrapper    { @apply flex justify-between items-center; }
+.inputLabel      { @apply text-xs font-bold uppercase tracking-wider ml-1; color: var(--color-text-subtle); }
+.rangeValue      { @apply text-xs font-bold px-2 py-0.5 rounded-full; background: var(--color-info-bg); color: var(--color-info); }
 
 .rangeInput {
-    @apply w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600;
+    @apply w-full h-2 rounded-lg appearance-none cursor-pointer;
+    background: var(--color-border);
+    accent-color: var(--color-info);
 }
-
 .rangeInput::-webkit-slider-thumb {
-    @apply appearance-none w-5 h-5 bg-blue-600 border-2 border-white rounded-full shadow-md;
-    transition: transform 0.1s ease-in-out;
+    @apply appearance-none w-5 h-5 border-2 border-white rounded-full shadow-md;
+    background: var(--color-info);
+    transition: transform 0.1s ease;
 }
-
-.rangeInput::-webkit-slider-thumb:hover {
-    @apply scale-110 bg-blue-700;
-}
-
+.rangeInput::-webkit-slider-thumb:hover { transform: scale(1.1); }
 .rangeInput::-moz-range-thumb {
-    @apply w-5 h-5 bg-blue-600 border-2 border-white rounded-full shadow-md;
-}
-
-.inputLabel {
-    @apply text-xs font-bold uppercase tracking-wider text-slate-500 ml-1;
+    @apply w-5 h-5 border-2 border-white rounded-full shadow-md;
+    background: var(--color-info);
 }
 
 .editInput {
-    @apply w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-sm;
+    @apply w-full px-4 py-2.5 rounded-xl font-medium transition-all shadow-sm;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text-medium);
+    outline: none;
 }
+.editInput:focus { border-color: var(--color-indigo); box-shadow: 0 0 0 2px var(--color-indigo-border); }
 
 .editTextarea {
-    @apply w-full px-4 py-3 rounded-xl border border-slate-300 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-sm min-h-[120px] resize-y;
+    @apply w-full px-4 py-3 rounded-xl font-medium transition-all shadow-sm min-h-[120px] resize-y;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text-medium);
+    outline: none;
 }
+.editTextarea:focus { border-color: var(--color-indigo); box-shadow: 0 0 0 2px var(--color-indigo-border); }
 
-.editActions {
-    @apply flex flex-wrap gap-3 mt-8 pt-4 border-t border-slate-200;
-}
+.editActions { @apply flex flex-wrap gap-3 mt-8 pt-4; border-top: 1px solid var(--color-border); }
 
 .saveButton {
-    @apply px-6 py-2.5 rounded-full bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-colors shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500;
+    @apply flex px-6 py-2.5 rounded-full font-bold shadow-sm;
+    background: var(--color-primary);
+    color: var(--color-text-on-primary);
+    transition: var(--transition-base);
 }
+.saveButton:hover { background: var(--color-primary-dark); }
 
 .cancelButton {
-    @apply px-6 py-2.5 rounded-full bg-white border border-slate-300 text-slate-700 font-bold hover:bg-slate-50 transition-colors focus:ring-2 focus:ring-offset-2 focus:ring-slate-500;
+    @apply px-6 py-2.5 rounded-full font-bold;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-medium);
+    transition: var(--transition-base);
 }
+.cancelButton:hover { background: var(--color-surface-alt); }
 
 .mapContainer {
-    @apply w-full h-96 mt-4 rounded-2xl overflow-hidden border border-slate-200 shadow-inner;
+    @apply w-full h-96 mt-4 rounded-2xl overflow-hidden shadow-inner;
+    border: 1px solid var(--color-border);
 }
+.mapContainer :global(.leaflet-container) { width: 100%; height: 100%; }
 
-.mapContainer :global(.leaflet-container) {
-    width: 100%;
-    height: 100%;
-}
-
-
-/* =============================
+/* ============================================================
    ANALYTICS
-   ============================= */
+   ============================================================ */
 .analyticsBox {
-    @apply bg-slate-50 border border-slate-100 rounded-2xl p-6;
+    @apply rounded-2xl p-6;
+    background: var(--color-surface-alt);
+    border: 1px solid #f1f5f9;
 }
 
 .analyticsRow {
-    @apply text-sm font-bold uppercase tracking-wide mb-4 text-slate-500;
+    @apply text-sm font-bold uppercase tracking-wide mb-4;
+    color: var(--color-text-subtle);
 }
 
 .analyticsPlaceholder {
-    @apply h-72 bg-white rounded-xl flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-200 shadow-inner font-medium;
+    @apply h-72 bg-white rounded-xl flex flex-col items-center justify-center font-medium;
+    border: 2px dashed var(--color-border);
+    color: var(--color-text-faint);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,.04);
 }
 
-.addFormRow {
-    @apply flex gap-2 items-center mb-4 flex-wrap;
-}
+.addFormRow { @apply flex gap-2 items-center mb-4 flex-wrap; }
 
 .smallInput {
-    @apply px-3 py-2 rounded-lg border border-slate-300 bg-white font-medium min-w-[180px] outline-none transition-shadow;
-    /* focus state */
+    @apply px-3 py-2 rounded-lg font-medium min-w-[180px] outline-none;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    transition: var(--transition-base);
 }
-.smallInput:focus {
-    @apply ring-2 ring-indigo-500 border-indigo-500 shadow-sm;
-}
+.smallInput:focus { border-color: var(--color-indigo); box-shadow: 0 0 0 2px var(--color-indigo-border); }
 
 .smallSelect {
-    @apply px-3 py-2 rounded-lg border border-slate-300 bg-white font-bold min-w-[140px] outline-none;
+    @apply px-3 py-2 rounded-lg font-bold min-w-[140px] outline-none;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
 }
 
 .primaryButton {
-    @apply px-4 py-2 rounded-lg bg-indigo-600 text-white font-bold shadow-sm hover:bg-indigo-700 transition-transform;
+    @apply px-4 py-2 rounded-lg font-bold shadow-sm;
+    background: var(--color-indigo);
+    color: var(--color-text-on-primary);
+    transition: var(--transition-base);
 }
+.primaryButton:hover { background: var(--color-indigo-dark); }
 
-.iconButton {
-    @apply bg-transparent border-0 text-lg cursor-pointer;
-}
+.iconButton  { @apply bg-transparent border-0 text-lg cursor-pointer; }
+.inlineLabel { @apply inline-flex mx-2 items-center gap-2 font-bold; color: var(--color-text-medium); }
 
-.inlineLabel {
-    @apply inline-flex mx-2 items-center gap-2 font-bold text-slate-700;
-}
-
-/* =============================
-   MODALS
-   ============================= */
+/* ============================================================
+   MODALS (generic)
+   ============================================================ */
 .modalOverlay {
-    @apply fixed inset-0 bg-black bg-opacity-40
-    flex items-center justify-center
-    z-50 backdrop-blur-sm;
+    @apply fixed inset-0 flex items-center justify-center z-50;
+    background: rgba(0,0,0,.4);
+    backdrop-filter: blur(4px);
 }
 
 .modal {
-    @apply bg-white rounded-2xl shadow-xl
-    w-full max-w-md p-6;
+    @apply bg-white rounded-2xl w-full max-w-md p-6;
+    box-shadow: var(--shadow-lg);
 }
 
-.modalTitle {
-    @apply text-lg font-semibold text-slate-800 mb-2;
-}
-
-.modalText {
-    @apply text-sm text-slate-600 mb-6;
-}
-
-.modalActions {
-    @apply flex justify-end gap-3;
-}
+.modalTitle   { @apply text-lg font-semibold mb-2; color: var(--color-text-medium); }
+.modalText    { @apply text-sm mb-6;                color: var(--color-text); }
+.modalActions { @apply flex justify-end gap-3; }
 
 .modalCancel {
-    @apply px-4 py-2 rounded-lg bg-slate-200
-    hover:bg-slate-300 transition;
+    @apply px-4 py-2 rounded-lg transition;
+    background: var(--color-surface-muted);
 }
+.modalCancel:hover { background: var(--color-border); }
 
 .modalDelete {
-    @apply px-4 py-2 rounded-lg bg-red-500 text-white
-    hover:bg-red-600 transition;
+    @apply px-4 py-2 rounded-lg text-white transition;
+    background: var(--color-danger);
 }
+.modalDelete:hover { background: var(--color-danger-dark); }
 
-/* =============================
-   PULSES HEADER (responsive)
-   ============================= */
+/* ============================================================
+   PULSES HEADER & FILTER BUTTONS
+   ============================================================ */
 .pulsesHeader {
-    @apply flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
-.pulseTypeDropdown {
-    @apply px-4 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-700
-    focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
-    transition-all shadow-sm cursor-pointer;
+.filterButtonsRow {
+    display: flex;
+    gap: 8px;
+    background-color: var(--color-surface-muted);
+    padding: 4px;
+    border-radius: var(--radius-lg);
 }
 
-.emptyState {
-    @apply text-slate-400 font-medium text-sm col-span-3 py-8 text-center;
+.filterBtn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-subtle);
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition-base);
+}
+.filterBtn:hover { color: var(--color-text-medium); }
+
+.activeFilter {
+    background-color: var(--color-primary);
+    color: var(--color-text-on-primary);
+    box-shadow: var(--shadow-sm);
 }
 
-/* =============================
-   RENTAL OFFERS SECTION (IMPROVED)
-   ============================= */
+/* ============================================================
+   CAROUSEL CONTROLS
+   ============================================================ */
+.carouselControls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-border);
+}
 
+.carouselBtn {
+    padding: 8px 16px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-medium);
+    cursor: pointer;
+    transition: var(--transition-base);
+}
+.carouselBtn:hover:not(:disabled) { background: var(--color-surface-alt); border-color: #94a3b8; }
+.carouselBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.carouselIndicator { font-size: 14px; font-weight: 500; color: var(--color-text-subtle); }
+
+/* ============================================================
+   RENTAL OFFERS SECTION
+   ============================================================ */
 .rentalSection {
-    @apply bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mt-8;
+    @apply bg-white rounded-3xl p-8 mt-8;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
 }
 
-.rentalHeader {
-    @apply flex items-center justify-between mb-6;
-}
+.rentalHeader { @apply flex items-center justify-between mb-6; }
+.rentalTitle  { @apply text-xl font-extrabold; color: var(--color-text-strong); }
+.offersList   { @apply grid gap-4; }
 
-.rentalTitle {
-    @apply text-xl font-extrabold text-slate-900;
-}
-
-/* Offer list container */
-.offersList {
-    @apply grid gap-4;
-}
-
-/* Offer card (used by your JSX as styles.offerCard) */
 .offerCard {
-    @apply bg-white border border-slate-200 rounded-2xl shadow-sm
-    p-4 flex flex-col md:flex-row md:items-center
-    justify-between gap-4
-    transition-all duration-300 hover:shadow-md;
+    @apply bg-white rounded-2xl p-5 flex flex-col md:flex-row md:items-start justify-between gap-5 transition-all duration-300;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+    font-size: 18px;
+    font-weight: 600;
 }
+.offerCard:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
 
-/* Left column inside offer */
-.offerLeft {
-    @apply flex flex-col gap-1 min-w-0;
-}
+.offerLeft { @apply flex flex-col gap-2 min-w-0 flex-1; }
 
 .offerPulseTitle {
-    @apply text-base font-bold text-slate-900 truncate;
+    @apply text-base font-bold truncate mb-1;
+    color: var(--color-text-strong);
 }
 
 .offerMeta {
-    @apply text-sm text-slate-600 flex flex-col gap-1 mt-1;
+    @apply text-sm flex flex-col gap-1.5;
+    color: var(--color-text);
 }
+.offerMeta > div { @apply flex items-center gap-2; }
 
-/* Status pill (you can toggle class depending on status) */
 .offerStatus {
-    @apply inline-flex items-center text-xs font-bold uppercase px-2 py-1 rounded-full w-fit;
+    @apply inline-flex items-center text-xs font-bold uppercase px-2.5 py-1 rounded-full w-fit mt-1;
 }
 
-/* Small note for non-pending statuses */
 .smallNote {
-    @apply text-sm text-slate-500 font-medium;
+    @apply text-sm font-medium;
+    color: var(--color-text-subtle);
 }
 
-/* Actions column */
+/* ============================================================
+   OFFER ACTION BUTTONS
+   ============================================================ */
 .offerActions {
-    @apply flex gap-2 flex-wrap items-center;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+    width: 140px;
+    align-self: center;
+    margin-right: 16px;
 }
 
-/* Buttons */
-.acceptBtn {
-    @apply px-3 py-1.5 rounded-lg
-    bg-emerald-600 text-white
-    text-sm font-semibold
-    hover:bg-emerald-700
-    transition-all shadow-sm;
-}
-
-.rejectBtn {
-    @apply px-3 py-1.5 rounded-lg
-    bg-red-500 text-white
-    text-sm font-semibold
-    hover:bg-red-600
-    transition-all shadow-sm;
-}
-
+/* shared base for all three */
+.acceptBtn,
+.rejectBtn,
 .counterBtn {
-    @apply px-3 py-1.5 rounded-lg
-    bg-indigo-600 text-white
-    text-sm font-semibold
-    hover:bg-indigo-700
-    transition-all shadow-sm;
-}
-
-/* Offer sub-elements formatting for dates and price */
-.offerMeta > div {
-    @apply flex items-center gap-2;
-}
-
-/* =============================
-   COUNTER OFFER
-   ============================= */
-
-.counterContainer {
-    @apply flex items-center gap-2 mt-3 flex-wrap;
-}
-
-.counterInput {
-    @apply px-3 py-2 rounded-lg border border-slate-300 bg-white
-    text-sm font-medium outline-none
-    focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500;
-}
-
-.counterSubmit {
-    @apply px-4 py-2 rounded-lg bg-indigo-600 text-white font-bold
-    hover:bg-indigo-700 transition;
-}
-
-.counterCancel {
-    @apply px-4 py-2 rounded-lg bg-slate-200 text-slate-700 font-bold
-    hover:bg-slate-300 transition;
-}
-
-/* =============================
-   RENTAL MODALS
-   ============================= */
-
-.rentalModalOverlay {
-    @apply fixed inset-0 bg-black bg-opacity-40
-    flex items-center justify-center
-    z-50 backdrop-blur-sm;
-}
-
-.rentalModal {
-    @apply bg-white rounded-2xl shadow-xl
-    w-full max-w-md p-6;
-}
-
-.rentalModalTitle {
-    @apply text-lg font-semibold text-slate-800 mb-2;
-}
-
-.rentalModalText {
-    @apply text-sm text-slate-600 mb-6;
-}
-
-.rentalModalActions {
-    @apply flex justify-end gap-3;
-}
-
-.rentalModalCancel {
-    @apply px-4 py-2 rounded-lg bg-slate-200
-    hover:bg-slate-300 transition;
-}
-
-.rentalModalAccept {
-    @apply px-4 py-2 rounded-lg bg-emerald-600 text-white
-    hover:bg-emerald-700 transition;
-}
-
-.rentalModalReject {
-    @apply px-4 py-2 rounded-lg bg-red-500 text-white
-    hover:bg-red-600 transition;
-}
-
-/* =============================
-   EMPTY STATES
-   ============================= */
-
-.rentalEmpty {
-    @apply text-slate-400 font-medium text-sm py-8 text-center;
-}
-
-/* PulseEditModal.module.css */
-
-.modalBackdrop {
-    position: fixed;
-    inset: 0; /* top:0; right:0; bottom:0; left:0; */
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.45);
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: var(--radius-md);
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition-base);
+    box-shadow: var(--shadow-sm);
+    white-space: nowrap;
+}
+
+.acceptBtn {
+    background-color: var(--color-primary);
+    color: var(--color-text-on-primary);
+}
+.acceptBtn:hover {
+    background-color: var(--color-primary-dark);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.rejectBtn {
+    background-color: transparent;
+    color: var(--color-danger);
+    border: 1px solid var(--color-danger);
+    width: fit-content;
+    min-width: 140px;
+
+}
+.rejectBtn:hover {
+    background-color: var(--color-danger-bg);
+    transform: translateY(-1px);
+}
+
+.counterBtn {
+    background-color: transparent;
+    color: var(--color-indigo);
+    border: 1px solid var(--color-indigo-border);
+}
+.counterBtn:hover {
+    background-color: var(--color-indigo-bg);
+    transform: translateY(-1px);
+}
+
+/* ============================================================
+   COUNTER OFFER
+   ============================================================ */
+.counterContainer { @apply flex items-center gap-2 mt-3 flex-wrap; }
+
+.counterInput {
+    @apply px-3 py-2 rounded-lg text-sm font-medium outline-none;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+.counterInput:focus { border-color: var(--color-indigo); box-shadow: 0 0 0 2px var(--color-indigo-border); }
+
+.counterSubmit {
+    @apply px-4 py-2 rounded-lg font-bold text-white transition;
+    background: var(--color-indigo);
+}
+.counterSubmit:hover { background: var(--color-indigo-dark); }
+
+.counterCancel {
+    @apply px-4 py-2 rounded-lg font-bold transition;
+    background: var(--color-surface-muted);
+    color: var(--color-text-medium);
+}
+.counterCancel:hover { background: var(--color-border); }
+
+/* ============================================================
+   RENTAL MODALS
+   ============================================================ */
+.rentalModalOverlay {
+    @apply fixed inset-0 flex items-center justify-center z-50;
+    background: rgba(0,0,0,.4);
+    backdrop-filter: blur(4px);
+}
+
+.rentalModal        { @apply bg-white rounded-2xl w-full max-w-md p-6; box-shadow: var(--shadow-lg); }
+.rentalModalTitle   { @apply text-lg font-semibold mb-2; color: var(--color-text-medium); }
+.rentalModalText    { @apply text-sm mb-6; color: var(--color-text); }
+.rentalModalActions { @apply flex justify-end gap-3; }
+
+.rentalModalCancel {
+    @apply px-4 py-2 rounded-lg transition;
+    background: var(--color-surface-muted);
+}
+.rentalModalCancel:hover { background: var(--color-border); }
+
+.rentalModalAccept {
+    @apply px-4 py-2 rounded-lg text-white transition;
+    background: #059669;
+}
+.rentalModalAccept:hover { background: #047857; }
+
+.rentalModalReject {
+    @apply px-4 py-2 rounded-lg text-white transition;
+    background: var(--color-danger);
+}
+.rentalModalReject:hover { background: var(--color-danger-dark); }
+
+/* ============================================================
+   EMPTY STATES
+   ============================================================ */
+.emptyState { @apply text-sm col-span-3 py-8 text-center; color: var(--color-text-faint); font-weight: 500; }
+.rentalEmpty { @apply text-sm py-8 text-center; color: var(--color-text-faint); font-weight: 500; }
+
+/* ============================================================
+   PULSE EDIT MODAL
+   ============================================================ */
+.modalBackdrop {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,.45);
     z-index: 1000;
     padding: 1.25rem;
     -webkit-tap-highlight-color: transparent;
 }
 
-/* Modal window */
-.modal {
-    width: 100%;
-    max-width: 640px;
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
-    padding: 1.25rem 1.25rem;
-    max-height: 85vh;
-    overflow-y: auto;
-    box-sizing: border-box;
-}
+/* .modal is shared – see Generic Modals above */
 
-/* Header */
 .modal > h3 {
     margin: 0 0 0.75rem 0;
     font-size: 1.125rem;
     font-weight: 600;
-    color: #000; /* keep text black as per palette */
+    color: var(--color-text-strong);
 }
 
-/* Form layout */
-
-/* Error message */
 .error {
     margin-top: 0.25rem;
     padding: 0.5rem;
-    background: rgba(255, 138, 101, 0.07); /* subtle bg from Secondary */
-    color: #ff8a65; /* Secondary */
-    border-radius: 6px;
+    background: rgba(239,68,68,.07);
+    color: var(--color-danger);
+    border-radius: var(--radius-sm);
     font-size: 0.875rem;
     word-break: break-word;
 }
 
-/* Modal action buttons */
-.modalActions {
-    display: flex;
-    gap: 0.6rem;
-    justify-content: flex-end;
-    margin-top: 0.5rem;
-}
+.modalActions { display: flex; gap: 0.6rem; justify-content: flex-end; margin-top: 0.5rem; }
 
-/* Neutral (cancel) button */
 .modalActions button[type="button"] {
     background: transparent;
-    border: 1px solid #ddd;
-    color: #222;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-medium);
     padding: 0.5rem 0.8rem;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     font-weight: 600;
     cursor: pointer;
     min-width: 90px;
 }
 
-/* Save button (primary) */
 .modalActions button[type="submit"] {
-    background: #00bfa5; /* primary */
-    border: 1px solid #00bfa5;
-    color: #fff;
+    background: var(--color-primary);
+    border: 1px solid var(--color-primary);
+    color: var(--color-text-on-primary);
     padding: 0.55rem 0.95rem;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     font-weight: 700;
     cursor: pointer;
     min-width: 110px;
 }
 
-/* Disabled state */
-.modalActions button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
+.modalActions button:disabled { opacity: 0.6; cursor: not-allowed; }
 
-/* Small responsive tweak */
-@media (max-width: 520px) {
-    .modal {
-        padding: 1rem;
-        border-radius: 10px;
-    }
-    .modalActions {
-        gap: 0.5rem;
-    }
-}
 
-/* Optional: small helpers for the card buttons so they visually match */
+
+/* ============================================================
+   CARD ACTION BUTTONS (edit / remove)
+   ============================================================ */
 .editBtn {
-    background: transparent;
-    border: 1px solid #00bfa5;
-    color: #00bfa5;
+    display: flex;
+    background-color: var(--color-primary);
+    color: var(--color-text-on-primary);
     padding: 0.35rem 0.6rem;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     font-weight: 600;
     margin-right: 0.5rem;
+    transition: var(--transition-base);
 }
+.editBtn:hover { background-color: var(--color-primary-dark); }
 
 .removeBtn {
+    display: flex;
     background: transparent;
-    border: 1px solid #ff8a65;
-    color: #ff8a65;
+    border: 1px solid var(--color-orange);
+    color: var(--color-orange);
     padding: 0.35rem 0.6rem;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     cursor: pointer;
     font-weight: 600;
+    transition: var(--transition-base);
 }
+.removeBtn:hover { background: var(--color-orange-bg); }
 
-.alertForm {
-    display: flex;
-    flex-direction: column;
-}
+/* ============================================================
+   ALERT / PULSE CREATION FORM
+   ============================================================ */
+.alertForm { display: flex; flex-direction: column; }
 
 .formTitle {
-    color: #0f172a;
+    color: var(--color-text-strong);
     font-size: 1.85rem;
     font-weight: 800;
     margin-top: 0;
@@ -878,18 +1025,12 @@
     letter-spacing: -0.5px;
 }
 
-.inputGroup {
-    margin-bottom: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-}
-
+/* inputGroup is already defined above – these rules extend it */
 .inputGroup label,
 .labelHeader {
     font-size: 0.85rem;
     font-weight: 700;
-    color: #475569;
+    color: var(--color-text-subtle);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 0.2rem;
@@ -899,89 +1040,71 @@
 .inputGroup select,
 .inputGroup textarea {
     padding: 0.85rem 1rem;
-    border: 2px solid #e2e8f0;
-    border-radius: 12px;
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-lg);
     font-size: 1rem;
-    color: #1e293b;
-    background-color: #f8fafc;
-    transition: all 0.25s ease;
+    color: var(--color-text-medium);
+    background-color: var(--color-surface-alt);
+    transition: var(--transition-base);
     outline: none;
     font-family: inherit;
 }
 
 .inputGroup input:hover,
 .inputGroup select:hover,
-.inputGroup textarea:hover {
-    border-color: #cbd5e1;
-}
+.inputGroup textarea:hover { border-color: #cbd5e1; }
 
 .inputGroup input:focus,
 .inputGroup select:focus,
 .inputGroup textarea:focus {
-    background-color: #ffffff;
-    border-color: #ef4444; /* Accent color (Red) */
-    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15);
+    background-color: var(--color-surface);
+    border-color: var(--color-danger);
+    box-shadow: var(--shadow-focus-danger);
 }
 
-.inputGroup textarea {
-    resize: vertical;
-    min-height: 120px;
-}
+.inputGroup textarea { resize: vertical; min-height: 120px; }
 
-/* =========================================
-   Image Upload Section
-   ========================================= */
-
-.imageUploadSection {
-    margin-bottom: 1.5rem;
-    display: flex;
-    flex-direction: column;
-}
+/* ============================================================
+   IMAGE UPLOAD
+   ============================================================ */
+.imageUploadSection { margin-bottom: 1.5rem; display: flex; flex-direction: column; }
 
 .imageGrid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); /* Adaptabil */
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     gap: 12px;
     margin-top: 0.5rem;
 }
 
 .imagePreviewBox {
     aspect-ratio: 1 / 1;
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
     position: relative;
     background-size: cover;
     background-position: center;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
     overflow: hidden;
     transition: transform 0.2s ease;
 }
-
-.imagePreviewBox:hover {
-    transform: scale(1.02);
-}
-
-/* Efect de overlay întunecat la hover pentru a vedea X-ul mai bine */
+.imagePreviewBox:hover { transform: scale(1.02); }
 .imagePreviewBox::before {
     content: '';
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0,0,0,.4);
     opacity: 0;
     transition: opacity 0.2s ease;
 }
-
-.imagePreviewBox:hover::before {
-    opacity: 1;
-}
+.imagePreviewBox:hover::before { opacity: 1; }
 
 .removeImgBtn {
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%) scale(0.8);
-    background: #ef4444;
-    color: white;
+    transform: translate(-50%,-50%) scale(0.8);
+    background: var(--color-danger);
+    color: var(--color-text-on-primary);
     border: none;
     border-radius: 50%;
     width: 32px;
@@ -991,50 +1114,36 @@
     justify-content: center;
     cursor: pointer;
     opacity: 0;
-    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Efect de bounce */
-    box-shadow: 0 4px 6px rgba(239, 68, 68, 0.4);
+    transition: var(--transition-bounce);
+    box-shadow: 0 4px 6px rgba(239,68,68,.4);
 }
-
-.imagePreviewBox:hover .removeImgBtn {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-}
-
-.removeImgBtn:hover {
-    background: #dc2626;
-    transform: translate(-50%, -50%) scale(1.1) !important;
-}
+.imagePreviewBox:hover .removeImgBtn { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+.removeImgBtn:hover { background: var(--color-danger-dark); transform: translate(-50%,-50%) scale(1.1) !important; }
 
 .uploadBtnBox {
     aspect-ratio: 1 / 1;
-    border: 2px dashed #cbd5e1;
-    border-radius: 12px;
+    border: 2px dashed var(--color-border);
+    border-radius: var(--radius-lg);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: #64748b;
-    background-color: #f8fafc;
-    transition: all 0.2s ease;
+    background-color: var(--color-surface-alt);
+    color: var(--color-text-subtle);
+    transition: var(--transition-base);
     gap: 0.5rem;
 }
-
-.uploadBtnBox span {
-    font-size: 0.8rem;
-    font-weight: 600;
-}
-
+.uploadBtnBox span { font-size: 0.8rem; font-weight: 600; }
 .uploadBtnBox:hover {
-    border-color: #ef4444;
-    background-color: #fef2f2;
-    color: #ef4444;
+    border-color: var(--color-danger);
+    background-color: var(--color-danger-bg);
+    color: var(--color-danger);
 }
 
-/* =========================================
-   Submit Button
-   ========================================= */
-
+/* ============================================================
+   SUBMIT BUTTON
+   ============================================================ */
 .submitBtn {
     width: 100%;
     margin-top: 1.5rem;
@@ -1042,52 +1151,42 @@
     align-items: center;
     justify-content: center;
     padding: 1rem;
-    border-radius: 12px; /* Mai modern decât pastila complet rotundă, se potrivește cu input-urile */
+    border-radius: var(--radius-lg);
     background-color: transparent;
-    color: #ef4444;
+    color: var(--color-danger);
     font-size: 1.1rem;
     font-weight: 700;
-    border: 2px solid #ef4444;
+    border: 2px solid var(--color-danger);
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
     text-transform: uppercase;
     letter-spacing: 1px;
 }
-
 .submitBtn:hover:not(:disabled) {
-    background-color: #ef4444;
-    color: #ffffff;
+    background-color: var(--color-danger);
+    color: var(--color-text-on-primary);
     transform: translateY(-2px);
-    box-shadow: 0 8px 15px -3px rgba(239, 68, 68, 0.3);
+    box-shadow: 0 8px 15px -3px rgba(239,68,68,.3);
 }
-
-.submitBtn:active:not(:disabled) {
-    transform: translateY(0);
-    box-shadow: none;
-}
-
+.submitBtn:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
 .submitBtn:disabled {
-    border-color: #cbd5e1;
-    color: #94a3b8;
+    border-color: var(--color-border);
+    color: var(--color-text-faint);
     cursor: not-allowed;
-    background-color: #f1f5f9;
+    background-color: var(--color-surface-muted);
 }
 
-
-/* Containerul de tag-uri în Edit Mode */
-.tagsContainer {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 10px;
-}
+/* ============================================================
+   TAGS
+   ============================================================ */
+.tagsContainer  { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 
 .tagWithDelete {
-    background: #f1f5f9;
-    color: #475569;
+    background: var(--color-surface-muted);
+    color: var(--color-text-subtle);
     padding: 4px 10px;
-    border-radius: 6px;
-    border: 1px solid #e2e8f0;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
     display: flex;
     align-items: center;
     font-size: 14px;
@@ -1096,59 +1195,105 @@
 .deleteTagBtn {
     background: none;
     border: none;
-    color: #ef4444;
+    color: var(--color-danger);
     font-size: 18px;
     margin-left: 8px;
     cursor: pointer;
     line-height: 1;
 }
 
-.publicSkillsSection {
-    margin-top: 30px; /* Distanță mai mare față de biografie */
-    margin-bottom: 30px;
-    padding-top: 20px;
-}
-
-.heroSkillsLabel {
-    font-size: 12px;
-    font-weight: 700;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 1.2px;
-    margin-bottom: 15px;
-    display: block;
-}
-
 .publicTagsContainer {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px; /* Distanță egală între ele */
-    margin-top: 15px;
+    gap: 8px;
+    margin-top: 12px;
     width: 100%;
-    justify-content: flex-start; /* Aliniere la stânga */
+    justify-content: flex-start;
 }
 
 .publicTag {
     flex: 0 1 auto;
-
-    background: #f8fafc;
-    color: #1e293b;
-    border: 1px solid #e2e8f0;
-
-    padding: 8px 16px;
-
-    font-size: 14px;
-    font-weight: 600;
+    background: var(--color-surface);
+    color: var(--color-text-subtle);
+    border: 1px solid var(--color-border);
+    padding: 4px 16px;
+    border-radius: var(--radius-full);
+    font-size: 13px;
+    font-weight: 500;
     white-space: nowrap;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    transition: var(--transition-base);
 }
-
 .publicTag:hover {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    background: var(--color-surface-muted);
+    border-color: #cbd5e1;
+    color: var(--color-text-medium);
+    transform: translateY(-1px);
 }
 
-.noSkillsText {
-    color: #94a3b8;
-    font-size: 14px;
-    font-style: italic;
+.noSkillsText { color: var(--color-text-faint); font-size: 14px; font-style: italic; }
+
+/* ============================================================
+   PULSE-TYPE DROPDOWN (standalone)
+   ============================================================ */
+.pulseTypeDropdown {
+    @apply px-4 py-2 rounded-xl font-bold cursor-pointer;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text-medium);
+    transition: var(--transition-base);
+    box-shadow: var(--shadow-sm);
+    outline: none;
+}
+.pulseTypeDropdown:focus { border-color: var(--color-indigo); box-shadow: 0 0 0 2px var(--color-indigo-border); }
+
+
+/* ============================================================
+   MEDIA QUERRIES
+   ============================================================ */
+
+@media (min-width: 640px) {
+    .editProfileBtn {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        margin-left: 0;
+    }
+
+    .resWrapperForButtonAndTag {
+        justify-content: flex-start;
+    }
+
+    .objectImage {
+        width: 120px;
+        height: 120px;
+    }
+
+    .avatarSection {
+        width: auto;
+        margin-left: 0;
+        margin-right: 0;
+        align-self: flex-start;
+    }
+
+    .objectActions {
+        justify-content: flex-start;
+        width: auto;
+    }
+}
+
+@media (max-width: 520px) {
+    .modal {
+        padding: 1rem;
+        border-radius: var(--radius-lg);
+    }
+
+    .modalActions {
+        gap: 0.5rem;
+    }
+}
+
+@media (min-width: 400px) {
+    .editActions {
+        justify-content: space-between;
+    }
 }

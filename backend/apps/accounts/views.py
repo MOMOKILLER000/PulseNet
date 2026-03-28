@@ -513,7 +513,7 @@ def add_pulse(request):
 
         trust_required = False
         price = data.get('price', 0)
-        if price > 1000:
+        if int(price) > 1000:
             trust_required = True
 
         pulse = Pulse.objects.create(
