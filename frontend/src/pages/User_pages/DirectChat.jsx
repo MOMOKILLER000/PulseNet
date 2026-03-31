@@ -163,9 +163,14 @@ const DirectChat = ({ currentUser }) => {
 
     const handleSend = async (e) => {
         e.preventDefault();
-        if (!newMessage.trim() || !socketRef.current) return;
+        console.log("Sending...");
+        if (!newMessage.trim() || !socketRef.current) {
+            return;
+        }
 
         if (!receiverPublicKey || !myPublicKey) {
+            console.log(receiverPublicKey);
+            console.log(myPublicKey);
             return;
         }
 
@@ -183,7 +188,6 @@ const DirectChat = ({ currentUser }) => {
             });
 
             socketRef.current.send(JSON.stringify({ message: payloadContent }));
-
         } catch (error) {
             setNewMessage(rawText);
         }
