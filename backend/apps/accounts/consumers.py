@@ -333,6 +333,13 @@ class PulseConsumer(AsyncWebsocketConsumer):
             "id": event["id"]
         }))
 
+    async def address_update(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "address_updated",
+            "id": event["id"],
+            "address": event["address"],
+            "model_type": event.get("model_type")
+        }))
 
 class RequestConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -404,6 +411,13 @@ class RequestConsumer(AsyncWebsocketConsumer):
             "type": "request_deleted",
             "id": event["id"]
         }))
+    async def address_update(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "address_updated",
+            "id": event["id"],
+            "address": event["address"],
+            "model_type": event.get("model_type")
+        }))
 
 
 class AlertConsumer(AsyncWebsocketConsumer):
@@ -457,6 +471,14 @@ class AlertConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             "type": "alert_deleted",
             "id": event["id"]
+        }))
+
+    async def address_update(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "address_updated",
+            "id": event["id"],
+            "address": event["address"],
+            "model_type": event.get("model_type")
         }))
 
     async def weather_message(self, event):

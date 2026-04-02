@@ -136,6 +136,8 @@ class Pulse(models.Model):
     )
     location = models.PointField(srid=4326, null=True, blank=True)
 
+    address = models.CharField(max_length=150, blank=True, null=True)
+
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     currencyType = models.CharField(max_length=10, default="RON")
 
@@ -478,6 +480,7 @@ class Alert(models.Model):
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default="other")
     created_at = models.DateTimeField(auto_now_add=True)
     location = models.PointField(srid=4326, null=True, blank=True)
+    address = models.CharField(max_length=150, null=True, blank=True)
     confirm_count = models.PositiveIntegerField(default=0)
     report_count = models.PositiveIntegerField(default=0)
     views_count = models.PositiveIntegerField(default=0)
@@ -691,6 +694,7 @@ class UrgentRequest(models.Model):
     currencyType = models.CharField(max_length=10, default="RON")
 
     location = models.PointField(srid=4326, null=True, blank=True)
+    address = models.CharField(max_length=150, blank=True, null=True)
 
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

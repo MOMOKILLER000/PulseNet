@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import {useNavigate} from "react-router-dom";
 import Loading from "@/components/Loading";
 import Footer from "@/components/Footer";
+import {MapPin} from "lucide-react"
 
 export default function Pulses() {
     const [pulses, setPulses] = useState([]);
@@ -21,7 +22,6 @@ export default function Pulses() {
 
     const socketRef = useRef(null);
     useEffect(() => {
-        // Initialize WebSocket
         socketRef.current = new WebSocket("ws://localhost:8000/ws/pulses/");
 
         socketRef.current.onopen = () => {
@@ -38,10 +38,17 @@ export default function Pulses() {
                     return;
                 }
 
-                // Handle new/updated pulses
+                if (message.type === "address_updated") {
+                    setPulses((prev) =>
+                        prev.map((p) =>
+                            p.id === message.id ? { ...p, address: message.address } : p
+                        )
+                    );
+                    return;
+                }
+
                 if (!message.id) return;
 
-                // Calculate lat/lng from GeoJSON location for frontend
                 let lat, lng;
                 if (message.location && message.location.coordinates) {
                     [lng, lat] = message.location.coordinates;
@@ -49,7 +56,6 @@ export default function Pulses() {
 
                 const newPulse = { ...message, lat, lng };
 
-                // Add to state if not already present
                 setPulses((prev) => {
                     if (prev.find((p) => p.id === newPulse.id)) return prev;
                     return [newPulse, ...prev];
@@ -75,49 +81,9 @@ export default function Pulses() {
         }, 400);
 
         return () => clearTimeout(delay);
-    }, [search, category, pulseType, minPrice, maxPrice]);
+    }, [search, category, pulseType, minPrice, maxPrice, page]);
 
     const navigate = useNavigate();
-    const fetchDetailedAddress = async (lat, lng) => {
-        try {
-            const res = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&addressdetails=1`,
-                {
-                    headers: {
-                        'Accept-Language': 'en',
-                        'User-Agent': 'YourAppName/1.0'
-                    }
-                }
-            );
-
-            if (!res.ok) return "Location details unavailable";
-
-            const data = await res.json();
-            const addr = data.address;
-
-            // 1. Get the Street
-            const street = addr.road || "";
-
-            // 2. Get the Number
-            const houseNumber = addr.house_number || "";
-
-            // 3. Get the City (with fallbacks for smaller towns/villages)
-            const city = addr.city || addr.town || addr.village || addr.suburb || "";
-
-            // Combine into "Street, Number, City"
-            // .filter(Boolean) ensures we don't have double commas if a value is missing
-            const formattedAddress = [street, houseNumber, city]
-                .filter(Boolean)
-                .join(", ");
-
-            return formattedAddress || data.display_name.split(',').slice(0, 3).join(', ');
-
-        } catch (err) {
-            console.error("Geocoding error:", err);
-            return "Unknown Location";
-        }
-    };
-
     const fetchPulses = async (pageNumber = 1) => {
         try {
             setLoading(true);
@@ -132,28 +98,18 @@ export default function Pulses() {
                 max_price: maxPrice,
             });
 
-            const res = await fetch(
-                `http://localhost:8000/accounts/list-all-pulses/?${params}`
-            );
-
+            const res = await fetch(`http://localhost:8000/accounts/list-all-pulses/?${params}`);
             if (!res.ok) throw new Error("Failed to load pulses");
 
             const data = await res.json();
 
-            const pulsesWithDetails = await Promise.all(
-                data.results.map(async (pulse) => {
-                    if (pulse.location) {
-                        const address = await fetchDetailedAddress(
-                            pulse.location.lat,
-                            pulse.location.lng
-                        );
-                        return { ...pulse, address };
-                    }
-                    return { ...pulse, address: "Global / Online" };
-                })
-            );
+            // Acum adresa vine direct din backend (pulse.address)
+            const pulsesWithAddress = data.results.map(pulse => ({
+                ...pulse,
+                address: pulse.address || (pulse.location ? "Se caută adresa..." : "Global / Online")
+            }));
 
-            setPulses(pulsesWithDetails);
+            setPulses(pulsesWithAddress);
             setHasNext(data.has_next);
             setHasPrevious(data.has_previous);
             setPage(data.page);
@@ -164,9 +120,6 @@ export default function Pulses() {
         }
     };
 
-    useEffect(() => {
-        fetchPulses(page);
-    }, []);
 
     const handleNext = () => { if (hasNext) fetchPulses(page + 1); };
     const handlePrevious = () => { if (hasPrevious) fetchPulses(page - 1); };
@@ -244,7 +197,7 @@ export default function Pulses() {
 
                                 <div className={styles.metaData}>
                                     <div className={styles.metaRow}>
-                                        <strong>📍 Address:</strong>
+                                        <strong><MapPin className="mb-2"/> Address:</strong>
                                         <span className={styles.addressText}>{pulse.address}</span>
                                     </div>
                                 </div>

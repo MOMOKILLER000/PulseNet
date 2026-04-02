@@ -3,7 +3,19 @@ import styles from '../../styles/Requests/UrgentRequests.module.css';
 import Navbar from "@/components/Navbar";
 import {useNavigate} from "react-router-dom";
 import Loading from "@/components/Loading";
-import {Dog, Hammer, Leaf, Monitor, MoreHorizontal, Package, Sparkles, Truck, Wrench, Zap} from "lucide-react";
+import {
+    AlarmClock,
+    Dog,
+    Hammer,
+    Leaf, MapPin,
+    Monitor,
+    MoreHorizontal,
+    Package,
+    Sparkles,
+    Truck,
+    Wrench,
+    Zap
+} from "lucide-react";
 import Footer from "@/components/Footer";
 
 const CATEGORIES = [
@@ -32,14 +44,6 @@ export default function UrgentRequests() {
     const [minPrice, setMinPrice] = useState("");
     const [maxPrice, setMaxPrice] = useState("");
 
-    useEffect(() => {
-        const delay = setTimeout(() => {
-            fetchRequests(1);
-        }, 400);
-
-        return () => clearTimeout(delay);
-    }, [search, category, minPrice, maxPrice]);
-
     const socketRef = useRef(null);
     useEffect(() => {
         // Initialize WebSocket
@@ -56,6 +60,15 @@ export default function UrgentRequests() {
                 // Handle deleted requests
                 if (message.type === "request_deleted" && message.id) {
                     setRequests((prev) => prev.filter((p) => p.id !== message.id));
+                    return;
+                }
+
+                if (message.type === "address_updated") {
+                    setRequests((prev) =>
+                        prev.map((req) =>
+                            req.id === message.id ? { ...req, address: message.address } : req
+                        )
+                    );
                     return;
                 }
 
@@ -91,47 +104,7 @@ export default function UrgentRequests() {
     }, []);
 
     const navigate = useNavigate();
-    const fetchDetailedAddress = async (lat, lng) => {
-        try {
-
-            const res = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&addressdetails=1`,
-                {
-                    headers: {
-                        'Accept-Language': 'en'
-                    }
-                }
-            );
-
-            if (!res.ok) return "Location details unavailable";
-
-            const data = await res.json();
-            const addr = data.address;
-
-            // 1. Get the Street
-            const street = addr.road || "";
-
-            // 2. Get the Number
-            const houseNumber = addr.house_number || "";
-
-            // 3. Get the City (with fallbacks for smaller towns/villages)
-            const city = addr.city || addr.town || addr.village || addr.suburb || "";
-
-            // Combine into "Street, Number, City"
-            // .filter(Boolean) ensures we don't have double commas if a value is missing
-            const formattedAddress = [street, houseNumber, city]
-                .filter(Boolean)
-                .join(", ");
-
-            return formattedAddress || data.display_name.split(',').slice(0, 3).join(', ');
-
-        } catch (err) {
-            console.error("Geocoding error:", err);
-            return "Unknown Location";
-        }
-    };
-
-    const fetchRequests = async (pageNumber) => {
+    const fetchRequests = async (pageNumber = 1) => {
         try {
             setLoading(true);
             setError("");
@@ -150,18 +123,13 @@ export default function UrgentRequests() {
             const data = await res.json();
             const fetchedResults = data.results || [];
 
-            // Run geocoding for all items in parallel
-            const requestsWithDetails = await Promise.all(
-                fetchedResults.map(async (req) => {
-                    if (req.location) {
-                        const address = await fetchDetailedAddress(req.location.lat, req.location.lng);
-                        return { ...req, address };
-                    }
-                    return { ...req, address: "Global / Online" };
-                })
-            );
+            // Preluăm adresa direct din răspunsul backend-ului
+            const requestsWithAddress = fetchedResults.map(req => ({
+                ...req,
+                address: req.address || (req.location ? "Se caută adresa..." : "Global / Online")
+            }));
 
-            setRequests(requestsWithDetails);
+            setRequests(requestsWithAddress);
             setHasNext(data.has_next);
             setHasPrevious(data.has_previous);
             setPage(data.page);
@@ -173,8 +141,12 @@ export default function UrgentRequests() {
     };
 
     useEffect(() => {
-        fetchRequests(page);
-    }, []);
+        const delay = setTimeout(() => {
+            fetchRequests(1);
+        }, 400);
+
+        return () => clearTimeout(delay);
+    }, [search, category, minPrice, maxPrice, page]);
 
     const handleNext = () => { if (hasNext) fetchRequests(page + 1); };
     const handlePrevious = () => { if (hasPrevious) fetchRequests(page - 1); };
@@ -256,10 +228,10 @@ export default function UrgentRequests() {
 
                             <div className={styles.metaData}>
                                 <div className={styles.metaRow}>
-                                    <strong>⏰ Expires:</strong> {formatDate(req.expires_at)}
+                                    <strong><AlarmClock className='mr-2 mb-1'/> Expires:</strong> {formatDate(req.expires_at)}
                                 </div>
                                 <div className={styles.metaRow}>
-                                    <strong>📍 Address:</strong>
+                                    <strong><MapPin className='mr-2 mb-1'/>Address:</strong>
                                     <span className={styles.addressText}>{req.address}</span>
                                 </div>
                             </div>
