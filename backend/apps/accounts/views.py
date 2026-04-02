@@ -35,7 +35,7 @@ from django.contrib.gis.db.models.functions import Distance as GisDistance
 from django.core.cache import cache
 import requests
 from .tasks import update_user_embedding, find_heroes_for_urgent_requests, get_model as _get_st_model, \
-    run_hero_search_task, process_pet_match_task, update_user_trust_score_task
+    run_hero_search_task, process_pet_match_task, update_user_trust_score_task, reverse_geocode_location
 from sentence_transformers import util as st_util
 def generate_password(length=12):
     alphabet = string.ascii_letters + string.digits + string.punctuation
@@ -533,6 +533,9 @@ def add_pulse(request):
             is_approved=not should_flag,
             toxicity_score=ai_score,
         )
+        if pulse.location:
+            reverse_geocode_location.delay("Pulse", pulse.id)
+
 
         images = request.FILES.getlist('images')
         for img in images:
@@ -605,17 +608,28 @@ def update_pulse(request, pulse_id):
         pulse.description = data.get("description", pulse.description)
         pulse.phone_number = data.get("phone_number", pulse.phone_number)
 
-        # Location handling (GeoJSON)
+        location_changed = False
         loc = data.get("location") if hasattr(data, "get") else None
         if loc:
             coords = loc.get("coordinates")
             if coords and len(coords) == 2:
-                pulse.location = Point(coords[0], coords[1], srid=4326)
-        elif loc is None:
-            pulse.location = None  # allow clearing location
+                new_point = Point(coords[0], coords[1], srid=4326)
+                if pulse.location != new_point:
+                    pulse.location = new_point
+                    location_changed = True
+        elif loc is None and "location" in data:
+            if pulse.location is not None:
+                pulse.location = None
+                pulse.address = "Global / Online"  # Nu mai e nevoie de Celery pt asta
+                location_changed = False
 
         pulse.full_clean()
         pulse.save()
+
+        address_status = pulse.address
+        if location_changed and pulse.location:
+            reverse_geocode_location.delay("Pulse", pulse.id)
+            address_status = "Changing the address..."
 
         # --- Handle uploaded images ---
         removed_images = request.POST.getlist("removed_images")
@@ -639,6 +653,7 @@ def update_pulse(request, pulse_id):
             "currencyType": pulse.currencyType,
             "description": pulse.description,
             "phone_number": pulse.phone_number,
+            "address": address_status,
             "location": {
                 "type": "Point",
                 "coordinates": [pulse.location.x, pulse.location.y]
@@ -780,6 +795,7 @@ def list_all_pulses(request):
             "currencyType": pulse.currencyType,
             "price": str(pulse.price) if pulse.price else None,
             "location": location_data,
+            "address": pulse.address,
             "created_at": pulse.created_at.isoformat() if pulse.created_at else None,
             "images": images,
         })
@@ -1060,6 +1076,7 @@ def get_pulse_by_id(request, pulse_id):
             "price": float(pulse.price),
             "currency": pulse.currencyType,
             "location": coords,
+            "address": pulse.address,
             "timestamp": pulse.created_at.isoformat() if pulse.created_at else None,
             "is_favorite": FavoritePulse.objects.filter(pulse=pulse, user=request.user).exists(),
             "images": images,
@@ -2300,6 +2317,11 @@ def create_alert(request):
             toxicity_score = ai_score,
         )
 
+        address_status = "Global / Online"
+        if alert.location:
+            reverse_geocode_location.delay("Alert", alert.id)
+            address_status = "Searching address..."
+
         # 2. Save the images
         images_files = request.FILES.getlist("images")
         saved_images = []
@@ -2310,7 +2332,6 @@ def create_alert(request):
         if alert.category in ["lost_pet", "found_pet"] and not should_flag:
             process_pet_match_task.delay(alert.id)
 
-        # 3. Prepare data for WebSocket (Match your JSX keys!)
         user_avatar = None
         if hasattr(request.user, 'profile_picture') and request.user.profile_picture:
             user_avatar = request.build_absolute_uri(request.user.profile_picture.url)
@@ -2326,6 +2347,7 @@ def create_alert(request):
             "created_at": alert.created_at.isoformat(),
             "lat": location.y if location else None,
             "lng": location.x if location else None,
+            "address": address_status,
             "images": saved_images,
             "image": saved_images[0] if saved_images else None,
             "is_admin_alert": request.user.is_staff,
@@ -2397,6 +2419,7 @@ def alert_details(request, alert_id):
         "user_id": alert.user.id,
         "lat": alert.location.y if alert.location else None,
         "lng": alert.location.x if alert.location else None,
+        "address": alert.address,
         "images": image_urls,
         "confirm_count": alert.confirm_count,
         "report_count": alert.report_count,
@@ -2894,7 +2917,7 @@ def get_request_by_id(request, request_id):
             "max_price": float(urgent_request.max_price) if urgent_request.max_price else None,
             "currency": urgent_request.currencyType,
             "location": coords,
-
+            "address": urgent_request.address,
             "is_active": urgent_request.is_active,
             "is_approved": urgent_request.is_approved,
             "is_flagged": urgent_request.is_flagged,
@@ -2971,6 +2994,11 @@ def create_urgent_request(request):
         toxicity_score=ai_score,
     )
 
+    address_status = "Global / Online"
+    if new_request.location:
+        reverse_geocode_location.delay("UrgentRequest", new_request.id)
+        address_status = "Searching address"
+
     images = request.FILES.getlist("images")
     for img in images:
         UrgentRequestImage.objects.create(urgent_request=new_request, image=img)
@@ -2989,6 +3017,7 @@ def create_urgent_request(request):
         "expires_at": new_request.expires_at.isoformat() if new_request.expires_at else None,
         "distance": None,
         "location": json.loads(new_request.location.geojson) if new_request.location else None,
+        "address": address_status,
         "image": image_url,
     }
 

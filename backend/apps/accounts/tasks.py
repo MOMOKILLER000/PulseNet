@@ -1,9 +1,10 @@
 import os
 import pickle
 
+from allauth.decorators import rate_limit
 from asgiref.sync import async_to_sync
 from celery import shared_task
-from celery.worker.state import requests
+import requests
 from channels.layers import get_channel_layer
 from django.contrib.gis.geos import Point
 from django.utils import timezone
@@ -13,9 +14,9 @@ from kombu.transport.sqlalchemy import metadata
 from sentence_transformers import SentenceTransformer
 
 # Import your models and logic
-from .models import Alert, UrgentRequest, User, Notification
+from .models import Alert, UrgentRequest, User, Notification, Pulse
 from .utils import find_heroes_for_urgent_requests, process_pet_image_and_find_matches, calculate_trust_score
-
+from django.apps import apps
 # Lazy loader for the model to keep worker memory clean
 _model = None
 
@@ -291,3 +292,59 @@ def update_user_trust_score_task(user_id):
 
     except User.DoesNotExist:
         pass
+
+
+@shared_task(rate_limit="1/s", max_retries=3)
+def reverse_geocode_location(model_name, instance_id, app_label="accounts"):
+
+    try:
+        ModelClass = apps.get_model(app_label=app_label, model_name=model_name)
+        instance = ModelClass.objects.get(id=instance_id)
+
+        if not instance.location:
+            instance.address = "Global / Online"
+            instance.save(update_fields=['address'])
+            return
+
+        lat, lng = instance.location.y, instance.location.x
+        url = f"https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat={lat}&lon={lng}&addressdetails=1"
+        headers = {'Accept-Language': 'ro', 'User-Agent': 'PulseNet'}
+
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            addr = data.get('address', {})
+
+            street = addr.get('road', '')
+            num = addr.get('house_number', '')
+            city = addr.get('city') or addr.get('town') or addr.get('village') or ''
+
+            formatted_address = ", ".join([p for p in [street, num, city] if p])
+            if not formatted_address:
+                formatted_address = ", ".join(data.get('display_name', '').split(',')[:3])
+
+            instance.address = formatted_address or "Locație necunoscută"
+            instance.save(update_fields=['address'])
+
+            group_name = f"{model_name.lower()}s_feed"
+
+            mapping = {
+                "Pulse": "pulses_feed",
+                "UrgentRequest": "requests_feed",
+                "Alert": "alerts_feed"
+            }
+            target_group = mapping.get(model_name, group_name)
+
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                target_group,
+                {
+                    "type": "address_update",
+                    "id": instance.id,
+                    "address": instance.address,
+                    "model_type": model_name
+                }
+            )
+
+    except Exception as e:
+        print(f"Eroare geocodare pentru {model_name} ID {instance_id}: {e}")

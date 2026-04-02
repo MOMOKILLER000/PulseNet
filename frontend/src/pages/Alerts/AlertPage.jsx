@@ -1,5 +1,4 @@
 import React, {useCallback, useEffect, useRef, useState} from "react";
-// IMPORTANT: You MUST import leaflet CSS for the map to render correctly
 import "leaflet/dist/leaflet.css";
 import Navbar from "@/components/Navbar";
 import { useParams, useNavigate } from "react-router-dom";
@@ -12,7 +11,7 @@ import {
     Circle,
     useMap,
 } from "react-leaflet";
-import { CheckCircle } from "lucide-react";
+import {CheckCheck, Check, CheckCircle, MessageSquareWarning, MapPinned} from "lucide-react";
 import L from "leaflet";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
@@ -435,7 +434,11 @@ export default function AlertPage() {
                                 disabled={confirmLoading}
                                 aria-pressed={!!alert.is_confirmed}
                             >
-                                {alert.is_confirmed ? "✅ Confirmed" : "✅ Confirm"} <span className={styles.count}>{counts.confirms}</span>
+                                <>
+                                    {alert.is_confirmed ? <CheckCheck /> : <Check />}
+                                    {alert.is_confirmed ? "Confirmed" : "Confirm"}
+                                    <span className={styles.count}>{counts.confirms}</span>
+                                </>
                             </button>
 
                             <button
@@ -443,10 +446,10 @@ export default function AlertPage() {
                                 onClick={handleReportOpen}
                                 disabled={reportLoading}
                             >
-                                ⚠️ Report <span className={styles.count}>{counts.reports}</span>
+                                <MessageSquareWarning/> Report <span className={styles.count}>{counts.reports}</span>
                             </button>
 
-                            <button className={`${styles.actionBtn} ${styles.mapBtn}`} onClick={openInMaps}>📍 Open in Maps</button>
+                            <button className={`${styles.actionBtn} ${styles.mapBtn}`} onClick={openInMaps}><MapPinned/> Open in Maps</button>
                         </div>
                     </div>
 

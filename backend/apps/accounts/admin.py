@@ -55,7 +55,7 @@ class CustomUserAdmin(UserAdmin):
 @admin.register(Pulse)
 class PulseAdmin(admin.ModelAdmin):
     form = LocationAdminForm
-    list_display = ('title', 'user', 'pulse_type', 'price', 'created_at')
+    list_display = ('title', 'user', 'pulse_type', 'price', 'address','created_at')
     exclude = ('location',)
 
 @admin.register(Alert)

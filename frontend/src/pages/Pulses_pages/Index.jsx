@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import {Map, MapClusterLayer, MapControls, MapPopup} from "@/components/ui/map";
 import Footer from "@/components/Footer";
 import Loading from "@/components/Loading";
+import { ImageOff } from "lucide-react";
 
 const initialFilters = {
     Pulses: {
@@ -79,7 +80,7 @@ function normalizePulse(item) {
         id: item.id,
         user: item.user || "Unknown user",
         createdAt: item.timestamp || "",
-        image: item.image || "https://via.placeholder.com/400x250",
+        image: item.image || null,
         title: item.name || item.title || "Untitled pulse",
         description: item.description || "",
         category: item.pulse_type === "obiecte"
@@ -107,7 +108,7 @@ function normalizeRequest(item) {
         id: item.id,
         user: item.user || "Unknown user",
         createdAt: item.created_at || "",
-        image: item.image || "https://via.placeholder.com/400x250",
+        image: item.image || null,
         title: item.title || "Untitled request",
         description: item.description || "",
         category: item.category
@@ -195,7 +196,7 @@ export default function Index() {
             () => {
                 setLocationDenied(true);
             },
-            { enableHighAccuracy: true, timeout: 10000 }
+            { enableHighAccuracy: false, timeout: 5000 }
         );
     }, []);
 
@@ -593,9 +594,6 @@ export default function Index() {
         );
     }
 
-    if (loadingRequests || loadingPulses)
-        return <Loading />
-
     return (
         <div className={styles.bodyContainer}>
             <div className={styles.navbarAdjust}>
@@ -720,11 +718,17 @@ export default function Index() {
                                             onClick={() => handleCardClick(product)}
                                             style={{ cursor: "pointer" }}
                                         >
-                                            <img
-                                                src={product.image}
-                                                alt={product.title}
-                                                className={styles.cardImage}
-                                            />
+                                            {product.image ? (
+                                                <img
+                                                    src={product.image}
+                                                    alt={product.title}
+                                                    className={styles.cardImage}
+                                                />
+                                            ) : (
+                                                <div className={styles.cardImagePlaceholder}>
+                                                    <ImageOff size={40} strokeWidth={1.5} />
+                                                </div>
+                                            )}
 
                                             <div className={styles.cardContent}>
                                                 <div className={styles.cardHeader}>

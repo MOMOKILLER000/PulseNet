@@ -1506,7 +1506,11 @@ export default function Profile() {
 
                             <div className={styles.objectGrid}>
                                 {filteredPulses.length === 0 && (
-                                    <p className={styles.emptyState}>No posts of type „{pulseFilter}” yet.</p>
+                                    <p className={styles.emptyState}>
+                                        No posts of type „
+                                        {pulseFilter === 'obiecte' ? 'objects' : pulseFilter === 'servicii' ? 'services' : pulseFilter}
+                                        ” yet.
+                                    </p>
                                 )}
 
                                 {currentPulses.map((pulse) => (

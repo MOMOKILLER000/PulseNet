@@ -302,14 +302,19 @@
 }
 
 .metaRow {
+    display: flex;
     font-size: 0.85rem;
     color: #666;
-    display: flex;
     justify-content: space-between;
+    align-items: center;
+    gap: 8px;
 }
 
 .metaRow strong {
     color: #333;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
 }
 
 /* Card Footer */

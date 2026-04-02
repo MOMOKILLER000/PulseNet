@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Heart, MessageSquare, Star, Send } from "lucide-react";
+import {ArrowLeft, ArrowRight, Heart, MessageSquare, Star, Send, LockKeyhole} from "lucide-react";
 import styles from "../../styles/Pulses_pages/pulseDetails.module.css";
 import Navbar from "../../components/Navbar";
 import { Map, MapMarker, MarkerContent } from "@/components/ui/map";
@@ -287,49 +287,6 @@ export default function PulseDetails() {
         return () => (mounted = false);
     }, [id]);
 
-    useEffect(() => {
-        const getDetailedAddress = async () => {
-            if (!pulse?.location) return;
-
-            // Get coords regardless of format (Array or GeoJSON)
-            const coords = getLocationCoords(pulse.location);
-            const [lng, lat] = coords;
-
-            try {
-                const res = await fetch(
-                    `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&addressdetails=1`,
-                    {
-                        headers: {
-                            'Accept-Language': 'en',
-                            'User-Agent': 'YourApp/1.0'
-                        }
-                    }
-                );
-
-                if (!res.ok) throw new Error();
-
-                const data = await res.json();
-                const addr = data.address;
-
-                // Extract the fields you wanted
-                const street = addr.road || "";
-                const houseNumber = addr.house_number || "";
-                const city = addr.city || addr.town || addr.village || "";
-
-                const fullString = [street, houseNumber, city].filter(Boolean).join(", ");
-                setFormattedAddress(fullString || "Location found");
-            } catch (err) {
-                console.error("Geocoding error:", err);
-                // Fallback to coordinates if API fails
-                setFormattedAddress(`${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E`);
-            }
-        };
-
-        getDetailedAddress();
-    }, [pulse?.location]);
-
-
-
     // === TIMEZONE-FIXED: convert backend UTC ranges to local all-day events ===
     useEffect(() => {
         if (!pulse) {
@@ -492,7 +449,7 @@ export default function PulseDetails() {
                             {/* INFO GRID */}
                             <div className={styles.infoGrid}>
                                 <div><span>Posted</span><strong>{isoToLocalString(pulse.timestamp)}</strong></div>
-                                <div><span>Location</span><strong>{formattedAddress}</strong></div>
+                                <div><span>Location</span><strong>{pulse.address}</strong></div>
                                 <div><span>Condition</span><strong>{pulse.condition || "N/A"}</strong></div>
                             </div>
 
@@ -656,7 +613,7 @@ export default function PulseDetails() {
                                         </button>
                                     ) : (
                                         <div className={styles.lockedNotice}>
-                                            🔒 You need a verified account with enough trust to access this
+                                            <LockKeyhole/> You need a verified account with enough trust to access this
                                         </div>
                                     )}
                                 </div>

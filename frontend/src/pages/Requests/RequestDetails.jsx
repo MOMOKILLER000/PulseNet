@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, MessageSquare, Send } from "lucide-react";
+import {ArrowLeft, ArrowRight, LockKeyhole, MessageSquare, Send} from "lucide-react";
 import styles from "../../styles/Pulses_pages/pulseDetails.module.css";
 import Navbar from "../../components/Navbar";
 import { Map, MapMarker, MarkerContent } from "@/components/ui/map";
@@ -40,16 +40,12 @@ function getMapInstance(candidate) {
     return typeof candidate.resize === "function" ? candidate : null;
 }
 
-// Convert a backend UTC timestamp (ISO) into a local YYYY-MM-DD string
-// so FullCalendar treats it as an all-day event in the user's timezone.
 function utcIsoToLocalDateString(isoOrDate) {
     const d = new Date(isoOrDate);
-    // Shift by timezone offset to get the equivalent local date
     const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
     return local.toISOString().split("T")[0];
 }
 
-// Convert ISO timestamp to local human-readable string (for UI timestamps)
 const isoToLocalString = (isoString) => {
     if (!isoString) return "N/A";
     const date = new Date(isoString);
@@ -86,7 +82,6 @@ export default function RequestDetails() {
     const [isPosting, setIsPosting] = useState(false);
 
     // local reviews state (for immediate UI preview)
-    const [formattedAddress, setFormattedAddress] = useState("Loading address...");
 
     const COMMENTS_PAGE_SIZE = 10;
 
@@ -199,6 +194,7 @@ export default function RequestDetails() {
 
     // ---------- end rating ----------
 
+
     useEffect(() => {
         let mounted = true;
         const csrfToken = getCookie("csrftoken");
@@ -225,66 +221,17 @@ export default function RequestDetails() {
     }, [id]);
 
     useEffect(() => {
-        const getDetailedAddress = async () => {
-            if (!request?.location) return;
-
-            // Get coords regardless of format (Array or GeoJSON)
-            const coords = getLocationCoords(request.location);
-            const [lng, lat] = coords;
-
-            try {
-                const res = await fetch(
-                    `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&addressdetails=1`,
-                    {
-                        headers: {
-                            'Accept-Language': 'en',
-                            'User-Agent': 'YourApp/1.0'
-                        }
-                    }
-                );
-
-                if (!res.ok) throw new Error();
-
-                const data = await res.json();
-                const addr = data.address;
-
-                // Extract the fields you wanted
-                const street = addr.road || "";
-                const houseNumber = addr.house_number || "";
-                const city = addr.city || addr.town || addr.village || "";
-
-                const fullString = [street, houseNumber, city].filter(Boolean).join(", ");
-                setFormattedAddress(fullString || "Location found");
-            } catch (err) {
-                console.error("Geocoding error:", err);
-                // Fallback to coordinates if API fails
-                setFormattedAddress(`${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E`);
-            }
-        };
-
-        getDetailedAddress();
-    }, [request?.location]);
-
-
-
-    useEffect(() => {
         if (!request) return;
-        const coords = getLocationCoords(request.location);
         let mounted = true;
+
         const ensureMapReady = async () => {
             await new Promise(r => setTimeout(r, 250));
             let mapInst = getMapInstance(mapRef.current);
-            const start = Date.now();
-            while (!mapInst && Date.now() - start < 2000 && mounted) {
-                await new Promise(r => setTimeout(r, 150));
-                mapInst = getMapInstance(mapRef.current);
-            }
-            if (!mounted) return;
-            if (mapInst) {
+            if (mapInst && mounted) {
                 try {
-                    if (typeof mapInst.resize === "function") mapInst.resize();
-                    if (typeof mapInst.setCenter === "function") mapInst.setCenter([coords[0], coords[1]]);
-                    if (typeof mapInst.setZoom === "function") mapInst.setZoom(16);
+                    mapInst.resize();
+                    mapInst.setCenter([coords[0], coords[1]]);
+                    mapInst.setZoom(16);
                 } catch (err) { window.dispatchEvent(new Event("resize")); }
             }
         };
@@ -292,18 +239,14 @@ export default function RequestDetails() {
         return () => { mounted = false; };
     }, [request]);
 
+    const coords = useMemo(() => getLocationCoords(request?.location), [request]);
     const images = useMemo(() => (request && request.images ? request.images : []), [request]);
     const next = () => { if (images.length) setIndex(i => (i + 1) % images.length); };
     const prev = () => { if (images.length) setIndex(i => (i - 1 + images.length) % images.length); };
 
-
-
     if (loading) return <Loading />
     if (error) return <div className={styles.errorBox}><h2>{error}</h2><button onClick={() => navigate(-1)}>Go Back</button></div>;
     if (!request) return null;
-
-    const coords = getLocationCoords(request.location);
-
 
     return (
         <div className={styles.body}>
@@ -364,7 +307,7 @@ export default function RequestDetails() {
                             {/* INFO GRID */}
                             <div className={styles.infoGrid}>
                                 <div><span>Posted</span><strong>{isoToLocalString(request.timestamp)}</strong></div>
-                                <div><span>Location</span><strong>{formattedAddress}</strong></div>
+                                <div><span>Location</span><strong>{request.address}</strong></div>
                                 <div><span>Available until</span><strong>{isoToLocalString(request.expires_at)}</strong></div>
                             </div>
 
@@ -485,7 +428,7 @@ export default function RequestDetails() {
                                         </button>
                                     ) : (
                                         <div className={styles.lockedNotice}>
-                                            🔒 You need a verified account with enough trust to access this
+                                            <LockKeyhole color='#D5B60A' size={25} strokeWidth={2.5}/>You need a verified account with enough trust to access this
                                         </div>
                                     )}
                                 </div>
