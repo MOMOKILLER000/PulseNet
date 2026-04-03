@@ -314,6 +314,19 @@
     background-color: rgba(203, 213, 225, 0.5);
 }
 
+.tabsRow {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.tabBtn {
+    @apply flex-1 sm:flex-none px-6 py-2.5 text-sm font-medium rounded-xl whitespace-nowrap transition-all;
+    color: var(--color-text-subtle);
+}
+
+.activeTab { color: var(--color-text-medium); background: rgba(203,213,225,0.4); }
+
 .tab {
     @apply flex-1 sm:flex-none px-6 py-2.5 text-sm font-medium rounded-xl whitespace-nowrap transition-all;
     color: var(--color-text-subtle);
@@ -631,6 +644,14 @@
     flex-wrap: wrap;
 }
 
+.categoryFilterButtonsRow {
+    display: flex;
+    gap: 8px;
+    padding: 4px;
+    border-radius: var(--radius-lg);
+    margin-bottom: 4px;
+}
+
 .filterButtonsRow {
     display: flex;
     gap: 8px;
@@ -738,7 +759,7 @@
     flex-direction: column;
     gap: 8px;
     flex-shrink: 0;
-    width: 160px;
+    width: 120px;
     align-self: center;
     margin-right: 16px;
 }

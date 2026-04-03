@@ -12,6 +12,7 @@ from django.http import JsonResponse
 from django.contrib.auth import get_user_model, login as django_login,logout as django_logout
 from django.core.exceptions import ValidationError
 import json
+from django.db.models import F
 from django.utils import timezone
 from datetime import timedelta
 from django.contrib.auth import get_user_model
@@ -256,6 +257,21 @@ def profile(request):
                 "timestamp": p.created_at.strftime("%Y-%m-%d %H:%M"),
             })
 
+        requests = UrgentRequest.objects.filter(user=user).prefetch_related('images')
+        requests_data = []
+        for req in requests:
+            requests_data.append({
+                "id": req.id,
+                "title": req.title,
+                "description": req.description,
+                "category": req.category,
+                "price": float(req.max_price) if req.max_price is not None else None,
+                "currencyType": req.currencyType,
+                "images": [request.build_absolute_uri(img.image.url) for img in req.images.all()],
+                "location": json.loads(req.location.geojson) if req.location else None,
+                "timestamp": req.created_at.strftime("%Y-%m-%d %H:%M"),
+            })
+
         # --- Count total posts ---
         total_posts = (
             pulses.count() +
@@ -283,6 +299,7 @@ def profile(request):
             "date_joined": user.date_joined,
             "totalPosts": total_posts,  # ← here you return the total number of posts
             "pulses": pulses_data,
+            "requests": requests_data,
         }
 
         return JsonResponse({"user": user_data})
@@ -602,7 +619,7 @@ def update_pulse(request, pulse_id):
             data = request.POST
         # --- Update fields if present ---
         pulse.title = data.get("title", pulse.title)
-        pulse.pulse_type = data.get("category", pulse.category)
+        pulse.pulse_type = data.get("category", pulse.pulse_type)
         pulse.price = data.get("price", pulse.price)
         pulse.currencyType = data.get("currencyType", pulse.currencyType)
         pulse.description = data.get("description", pulse.description)
@@ -3041,6 +3058,108 @@ def create_urgent_request(request):
     }, status=201)
 
 
+
+@login_required
+@require_http_methods(["POST"])
+def update_request(request, request_id):
+    try:
+        urgent_request = get_object_or_404(UrgentRequest, id=request_id)
+        if request.user != request.user:
+            return JsonResponse({"error": "Permission denied"}, status=403)
+
+        # Determine if JSON or FormData
+        if request.content_type.startswith("application/json"):
+            data = json.loads(request.body or "{}")
+        else:
+            data = request.POST
+        # --- Update fields if present ---
+        urgent_request.title = data.get("title", urgent_request.title)
+        urgent_request.category = data.get("category", urgent_request.category)
+        urgent_request.max_price = data.get("price", urgent_request.max_price)
+        urgent_request.currencyType = data.get("currencyType", urgent_request.currencyType)
+        urgent_request.description = data.get("description", urgent_request.description)
+
+        location_changed = False
+        loc = data.get("location") if hasattr(data, "get") else None
+        if loc:
+            coords = loc.get("coordinates")
+            if coords and len(coords) == 2:
+                new_point = Point(coords[0], coords[1], srid=4326)
+                if urgent_request.location != new_point:
+                    urgent_request.location = new_point
+                    location_changed = True
+        elif loc is None and "location" in data:
+            if urgent_request.location is not None:
+                urgent_request.location = None
+                urgent_request.address = "Global / Online"  # Nu mai e nevoie de Celery pt asta
+                location_changed = False
+
+        urgent_request.full_clean()
+        urgent_request.save()
+
+        address_status = urgent_request.address
+        if location_changed and urgent_request.location:
+            reverse_geocode_location.delay("UrgentRequest", request.id)
+            address_status = "Changing the address..."
+
+        # --- Handle uploaded images ---
+        removed_images = request.POST.getlist("removed_images")
+        if removed_images:
+            for url in removed_images:
+                filename = url.split("/")[-1]
+                urgent_request.images.filter(image__icontains=filename).delete()
+
+        # Add new uploaded images
+        uploaded_files = request.FILES.getlist("images")
+        for img in uploaded_files:
+            urgent_request.images.create(image=img)
+
+        # Prepare response data
+        request_data = {
+            "id": urgent_request.id,
+            "title": urgent_request.title,
+            "category": urgent_request.category,
+            "price": float(urgent_request.max_price) if urgent_request.max_price is not None else None,
+            "currencyType": urgent_request.currencyType,
+            "description": urgent_request.description,
+            "address": address_status,
+            "location": {
+                "type": "Point",
+                "coordinates": [urgent_request.location.x, urgent_request.location.y]
+            } if urgent_request.location else None,
+            "images": [request.build_absolute_uri(img.image.url) for img in urgent_request.images.all()],
+        }
+
+        return JsonResponse({"message": "Request updated", "request": request_data}, status=200)
+
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    except ValidationError as e:
+        errors = getattr(e, "message_dict", None) or e.messages
+        return JsonResponse({"error": errors}, status=400)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
+
+
+@login_required
+@require_http_methods(["DELETE"])
+def remove_request(request, request_id):
+    try:
+        request = UrgentRequest.objects.get(id=request_id, user=request.user)
+        request.delete()
+        return JsonResponse({"success": True})
+    except UrgentRequest.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Pulsul nu a fost găsit"}, status=404)
+    except Exception as e:
+        # If this triggers, check your console to see the specific error
+        return JsonResponse(
+            {"success": False, "error": str(e)},
+            status=400
+        )
+
+
 @login_required
 def get_request_comments(request, request_id):
     if request.method == "GET":
@@ -3394,6 +3513,91 @@ def admin_alert_reports(request):
     return JsonResponse({"reports": data})
 
 
+@login_required
+def admin_feedbacks(request):
+    if not request.user.is_staff:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    try:
+        # 🔹 Rental Signals
+        rental_signals = []
+        for signal in PulseRentalSignal.objects.select_related("reporter", "rental__pulse"):
+            rental_signals.append({
+                "id": signal.id,
+                "message": signal.message,
+                "created_at": signal.created_at.isoformat(),
+                "resolved": signal.resolved,
+                "reported_by_owner": signal.reported_by_owner,
+                "reporter": {
+                    "id": signal.reporter.id,
+                    "username": signal.reporter.username,
+                },
+                "rental": {
+                    "id": signal.rental.id,
+                    "pulse_title": signal.rental.pulse.title,
+                },
+                "description": signal.message,
+            })
+
+        # 🔹 Pulse Feedbacks
+        rental_feedbacks = []
+        for feedback in PulseFeedback.objects.select_related("reviewer", "pulse", "owner"):
+            rental_feedbacks.append({
+                "id": feedback.id,
+                "rating": feedback.rating,
+                "comment": feedback.comment,
+                "created_at": feedback.created_at.isoformat(),
+                "reviewer": {
+                    "id": feedback.reviewer.id,
+                    "username": feedback.reviewer.username,
+                },
+                "owner": {
+                    "id": feedback.owner.id,
+                    "username": feedback.owner.username,
+                },
+                "pulse": {
+                    "id": feedback.pulse.id,
+                    "title": feedback.pulse.title,
+                },
+                "description": feedback.comment,
+            })
+
+        # 🔹 Urgent Request Feedbacks
+        user_contacts = []
+        for contact in UrgentRequestFeedback.objects.select_related("reviewer", "request", "owner"):
+            user_contacts.append({
+                "id": contact.id,
+                "rating": contact.rating,
+                "comment": contact.comment,
+                "created_at": contact.created_at.isoformat(),
+                "reviewer": {
+                    "id": contact.reviewer.id,
+                    "username": contact.reviewer.username,
+                },
+                "owner": {
+                    "id": contact.owner.id,
+                    "username": contact.owner.username,
+                },
+                "request": {
+                    "id": contact.request.id,
+                    "title": getattr(contact.request, "title", f"Request #{contact.request.id}"),
+                },
+                "description": contact.comment,
+            })
+
+        return JsonResponse({
+            "success": True,
+            "feedbacks": {
+                "rental_signals": rental_signals,
+                "rental_feedbacks": rental_feedbacks,
+                "user_contacts": user_contacts,
+            }
+        }, safe=False)
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+
 @staff_member_required
 @require_POST
 def ban_user(request, user_id):
@@ -3509,3 +3713,33 @@ def delete_urgent_request(request, id):
         return JsonResponse({"message": "Urgent request deleted successfully"})
     except UrgentRequest.DoesNotExist:
         return JsonResponse({"error": "Urgent request not found"}, status=404)
+
+
+@require_http_methods(["DELETE"])
+@login_required
+def delete_rental_signal(request, id):
+    try:
+        PulseRentalSignal.objects.get(id=id).delete()
+        return JsonResponse({"success": True})
+    except PulseRentalSignal.DoesNotExist:
+        return JsonResponse({"error": "Not found"}, status=404)
+
+
+@require_http_methods(["DELETE"])
+@login_required
+def delete_rental_feedback(request, id):
+    try:
+        PulseFeedback.objects.get(id=id).delete()
+        return JsonResponse({"success": True})
+    except PulseFeedback.DoesNotExist:
+        return JsonResponse({"error": "Not found"}, status=404)
+
+
+@require_http_methods(["DELETE"])
+@login_required
+def delete_user_contact(request, id):
+    try:
+        UrgentRequestFeedback.objects.get(id=id).delete()
+        return JsonResponse({"success": True})
+    except UrgentRequestFeedback.DoesNotExist:
+        return JsonResponse({"error": "Not found"}, status=404)
