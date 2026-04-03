@@ -18,10 +18,25 @@ import {
     BriefcaseBusiness,
     Handshake,
     Repeat, Undo, Save,
-    Star
+    Star, AlertCircle, MapPin, Truck, Wrench, Sparkles, Monitor, Package, Dog, Hammer, Leaf, Zap, MoreHorizontal
 } from 'lucide-react';
 import {useNavigate} from "react-router-dom";
 import Footer from "@/components/Footer";
+
+
+
+const CATEGORIES = [
+    { id: 'transport', label: 'Transport', icon: Truck },
+    { id: 'labor', label: 'Help / Labor', icon: Wrench },
+    { id: 'cleaning', label: 'Cleaning', icon: Sparkles },
+    { id: 'tech', label: 'IT Support', icon: Monitor },
+    { id: 'delivery', label: 'Delivery', icon: Package },
+    { id: 'pet_care', label: 'Pet Care', icon: Dog },
+    { id: 'repair', label: 'Home Repair', icon: Hammer },
+    { id: 'landscaping', label: 'Landscaping', icon: Leaf },
+    { id: 'electrical', label: 'Electrical', icon: Zap },
+    { id: 'other', label: 'Other', icon: MoreHorizontal },
+];
 
 
 function ChangeView({ center, radiusKm }) {
@@ -96,10 +111,12 @@ export default function Profile() {
     const navigate = useNavigate();
 
     const [pulseFilter, setPulseFilter] = useState("obiecte");
+    const [reqIndex, setReqIndex] = useState(0);
 
     const [imagesPreview, setImagesPreview] = useState([]); // URLs for preview
     const [newImages, setNewImages] = useState([]);         // File objects to send
     const pulseFileInputRef = useRef(null);
+    const requestFileInputRef = useRef(null);
     const [removedImages, setRemovedImages] = useState([]);
 
     const [preview, setPreview] = useState(null);
@@ -126,7 +143,16 @@ export default function Profile() {
         show: false,
         id: null,
     });
+
+    const [deleteRequestModal, setDeleteRequestModal] = useState({
+        show: false,
+        id: null,
+    });
+
+    const [activeTab, setActiveTab] = useState("pulses");
     const [editingPulse, setEditingPulse] = useState(null);
+    const [editingRequest, setEditingRequest] = useState(null);
+
     const [pulseEditForm, setPulseEditForm] = useState({
         title: "",
         category: "",
@@ -135,6 +161,15 @@ export default function Profile() {
         description: "",
         phone_number: "",
     });
+
+    const [requestEditForm, setRequestEditForm] = useState({
+        title: "",
+        category: "",
+        price: "",
+        currencyType: "RON",
+        description: "",
+    });
+
     const [editLoading, setEditLoading] = useState(false);
     const [editError, setEditError] = useState(null);
 
@@ -595,6 +630,27 @@ export default function Profile() {
         setImagesPreview((prev) => prev.filter((_, i) => i !== idx));
     }
 
+    function handleRequestImageChange(e) {
+        const files = Array.from(e.target.files);
+        setNewImages((prev) => [...prev, ...files]);
+
+        // Create preview URLs
+        const newPreviews = files.map((file) => URL.createObjectURL(file));
+        setImagesPreview((prev) => [...prev, ...newPreviews]);
+    }
+
+// Remove image at index
+    function removeRequestImageAt(idx) {
+        const removed = imagesPreview[idx];
+
+        // If it's an existing backend image (URL)
+        if (typeof removed === "string") {
+            setRemovedImages((prev) => [...prev, removed]);
+        }
+
+        setImagesPreview((prev) => prev.filter((_, i) => i !== idx));
+    }
+
     function handleEditChange(e) {
         const { name, value } = e.target;
         setPulseEditForm((prev) => ({ ...prev, [name]: value }));
@@ -611,6 +667,21 @@ export default function Profile() {
             phone_number: pulse.phone_number || "",
         });
         setImagesPreview(pulse.images || []);
+        setNewImages([]); // reset newly added
+        setEditLoading(false); // reset loading
+        setEditError(null);    // reset any previous error
+    }
+
+    function handleEditRequest(request) {
+        setEditingRequest(request);
+        setRequestEditForm({
+            title: request.title || "",
+            category: request.category || "",
+            price: request.price ?? "",
+            currencyType: request.currencyType || "RON",
+            description: request.description || "",
+        });
+        setImagesPreview(request.images || []);
         setNewImages([]); // reset newly added
         setEditLoading(false); // reset loading
         setEditError(null);    // reset any previous error
@@ -658,6 +729,57 @@ export default function Profile() {
             }));
 
             setEditingPulse(null);
+            setImagesPreview([]);
+            setNewImages([]);
+            setEditLoading(false);
+        } catch (err) {
+            setEditError(err.message || "Eroare de rețea");
+            setEditLoading(false);
+        }
+    }
+
+    async function handleSaveRequestEdit(e) {
+        e.preventDefault();
+        setEditLoading(true);
+        setEditError(null);
+
+        try {
+            const formData = new FormData();
+            Object.entries(requestEditForm).forEach(([key, value]) => {
+                if (value !== undefined && value !== null) {
+                    formData.append(key, value);
+                }
+            });
+
+            removedImages.forEach((img) => formData.append("removed_images", img));
+            // Only append new images
+            newImages.forEach((file) => formData.append("images", file));
+
+            const res = await fetch(
+                `http://localhost:8000/accounts/update_request/${editingRequest.id}/`,
+                {
+                    method: "POST",
+                    headers: { "X-CSRFToken": getCookie("csrftoken") },
+                    credentials: "include",
+                    body: formData,
+                }
+            );
+
+            const data = await res.json();
+            if (!res.ok) {
+                setEditError(data.error || "Eroare la salvare");
+                setEditLoading(false);
+                return;
+            }
+
+            setUser((prev) => ({
+                ...prev,
+                requests: prev.requests.map((p) =>
+                    p.id === data.request.id ? data.request : p
+                ),
+            }));
+
+            setEditingRequest(null);
             setImagesPreview([]);
             setNewImages([]);
             setEditLoading(false);
@@ -1101,10 +1223,69 @@ export default function Profile() {
         setCurrentIndex(0);
     };
 
+
+    const filteredRequests = useMemo(() => {
+        return user?.requests || [];
+    }, [user]);
+
+// 2. Slice the list to ONLY show the items for the current page
+    const currentRequests = useMemo(() => {
+        return filteredRequests.slice(reqIndex, reqIndex + itemsPerPage);
+    }, [filteredRequests, reqIndex]);
+
+
+    const handleReqNext = () => {
+        if (reqIndex + itemsPerPage < filteredRequests.length) {
+            setReqIndex(prev => prev + itemsPerPage);
+        }
+    };
+
+    const handleReqPrev = () => {
+        if (reqIndex - itemsPerPage >= 0) {
+            setReqIndex(prev => prev - itemsPerPage);
+        }
+    };
+
     const currentPulses = filteredPulses.slice(currentIndex, currentIndex + itemsPerPage);
 
+
+    const openDeleteRequestModal = (id) => {
+        setDeleteRequestModal({ show: true, id });
+    };
+
+    const closeDeleteRequestModal = () => {
+        setDeleteRequestModal({ show: false, id: null });
+    };
+
+    const handleDeleteRequest = async () => {
+        if (!deleteRequestModal.id) return;
+
+        try {
+            const response = await fetch(
+                `http://localhost:8000/accounts/remove_request/${deleteRequestModal.id}/`,
+                {
+                    method: "DELETE",
+                    headers: { "X-CSRFToken": getCookie("csrftoken") },
+                    credentials: "include",
+                }
+            );
+
+            if (response.ok) {
+                setUser((prev) => ({
+                    ...prev,
+                    requests: prev.requests.filter((p) => p.id !== deleteRequestModal.id),
+                }));
+                closeDeleteRequestModal();
+            } else {
+                console.error("Failed to delete request");
+            }
+        } catch (error) {
+            console.error("Error removing request:", error);
+        }
+    };
+
     const handleNext = () => {
-        if (currentIndex + itemsPerPage < filteredPulses.length) {
+        if (currentIndex + itemsPerPage < filteredRequests.length) {
             setCurrentIndex(prev => prev + itemsPerPage);
         }
     };
@@ -1485,130 +1666,320 @@ export default function Profile() {
                             whileHover={{ y: -2, boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
                             transition={{ duration: 0.2 }}
                         >
-                            {/* Header modificat cu butoane */}
-                            <div className={styles.pulsesHeader}>
-                                <h2 className={styles.sectionTitle}>My listings</h2>
-                                <div className={styles.filterButtonsRow}>
-                                    <motion.button {...btnMotion}
-                                        className={`${styles.filterBtn} ${pulseFilter === "obiecte" ? styles.activeFilter : ""}`}
-                                        onClick={() => handleFilterChange("obiecte")}
+                            <div className={styles.pulsesContainer}>
+                                <div className={styles.categoryFilterButtonsRow}>
+                                    <motion.button
+                                        {...btnMotion}
+                                        className={`${styles.filterBtn} ${activeTab === "pulses" ? styles.activeFilter : ""}`}
+                                        onClick={() => setActiveTab("pulses")}
                                     >
-                                        Objects
+                                        Pulses
                                     </motion.button>
-                                    <motion.button {...btnMotion}
-                                        className={`${styles.filterBtn} ${pulseFilter === "servicii" ? styles.activeFilter : ""}`}
-                                        onClick={() => handleFilterChange("servicii")}
+
+                                    <motion.button
+                                        {...btnMotion}
+                                        className={`${styles.filterBtn} ${activeTab === "requests" ? styles.activeFilter : ""}`}
+                                        onClick={() => setActiveTab("requests")}
                                     >
-                                        Services
+                                        Requests
                                     </motion.button>
                                 </div>
-                            </div>
 
-                            <div className={styles.objectGrid}>
-                                {filteredPulses.length === 0 && (
-                                    <p className={styles.emptyState}>
-                                        No posts of type „
-                                        {pulseFilter === 'obiecte' ? 'objects' : pulseFilter === 'servicii' ? 'services' : pulseFilter}
-                                        ” yet.
-                                    </p>
+                                {activeTab === "pulses" && (
+                                    <>
+                                        <div className={styles.pulsesHeader}>
+                                            <h2 className={styles.sectionTitle}>My listings</h2>
+
+                                            <div className={styles.filterButtonsRow}>
+                                                <motion.button
+                                                    {...btnMotion}
+                                                    className={`${styles.filterBtn} ${pulseFilter === "obiecte" ? styles.activeFilter : ""}`}
+                                                    onClick={() => handleFilterChange("obiecte")}
+                                                >
+                                                    Objects
+                                                </motion.button>
+
+                                                <motion.button
+                                                    {...btnMotion}
+                                                    className={`${styles.filterBtn} ${pulseFilter === "servicii" ? styles.activeFilter : ""}`}
+                                                    onClick={() => handleFilterChange("servicii")}
+                                                >
+                                                    Services
+                                                </motion.button>
+                                            </div>
+                                        </div>
+
+                                        <div className={styles.objectGrid}>
+                                            {filteredPulses.length === 0 && (
+                                                <p className={styles.emptyState}>
+                                                    No posts of type „
+                                                    {pulseFilter === "obiecte"
+                                                        ? "objects"
+                                                        : pulseFilter === "servicii"
+                                                            ? "services"
+                                                            : pulseFilter}
+                                                    ” yet.
+                                                </p>
+                                            )}
+
+                                            {currentPulses.map((pulse) => (
+                                                <motion.div
+                                                    key={pulse.id}
+                                                    className={styles.objectCard}
+                                                    onClick={() => navigate(`/pulse/${pulse.pulseType}/${pulse.id}`)}
+                                                    initial={{ opacity: 0, y: 16 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    transition={{ duration: 0.3 }}
+                                                    whileHover={{ y: -3, boxShadow: "0 8px 24px rgba(0,0,0,0.1)" }}
+                                                >
+                                                    <div className={styles.objectImage}>
+                                                        {pulse.images && pulse.images.length > 0 ? (
+                                                            <img
+                                                                src={pulse.images[0]}
+                                                                alt={pulse.title}
+                                                                className={styles.pulseImage}
+                                                            />
+                                                        ) : (
+                                                            <span className={styles.imagePlaceholder}>
+                      {pulseFilter === "obiecte" ? (
+                          <Boxes size={80} color={"black"} />
+                      ) : (
+                          <BriefcaseBusiness size={80} color={"black"} />
+                      )}
+                    </span>
+                                                        )}
+                                                    </div>
+
+                                                    <div className={styles.objectInfo}>
+                                                        <h3 className={styles.objectName}>{pulse.title}</h3>
+
+                                                        {pulse.phone_number && (
+                                                            <p className={styles.pulsePhone}>
+                                                                <Phone size={16} color={"black"} style={{ marginTop: "2px", marginRight: "5px" }} />
+                                                                {pulse.phone_number}
+                                                            </p>
+                                                        )}
+
+                                                        <div className="flex">
+                                                            <CalendarDays color={"#475064"} />
+                                                            <p className={styles.pulseDate}>
+                                                                Postat:{" "}
+                                                                {pulse.timestamp
+                                                                    ? new Date(pulse.timestamp.replace(" ", "T") + "Z").toLocaleString("ro-RO", {
+                                                                        day: "2-digit",
+                                                                        month: "2-digit",
+                                                                        year: "numeric",
+                                                                        hour: "2-digit",
+                                                                        minute: "2-digit",
+                                                                    })
+                                                                    : "—"}
+                                                            </p>
+                                                        </div>
+
+                                                        <div className="flex">
+                                                            <DollarSign color={"#99cb91"} />
+                                                            {pulse.price != null && (
+                                                                <span className="font-bold">
+                        {pulse.price} {pulse.currencyType || "lei"}
+                      </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className={styles.objectActions}>
+                                                        <motion.button
+                                                            {...btnMotion}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleEditPulse(pulse);
+                                                            }}
+                                                            className={styles.editBtn}
+                                                        >
+                                                            <SquarePen className="mr-1" />
+                                                            Edit Post
+                                                        </motion.button>
+
+                                                        <motion.button
+                                                            {...btnMotion}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                openDeletePulseModal(pulse.id);
+                                                            }}
+                                                            className={styles.removeBtn}
+                                                        >
+                                                            <X />
+                                                            Delete
+                                                        </motion.button>
+                                                    </div>
+                                                </motion.div>
+                                            ))}
+                                        </div>
+
+                                        {filteredPulses.length > itemsPerPage && (
+                                            <div className={styles.carouselControls}>
+                                                <motion.button
+                                                    {...btnMotion}
+                                                    onClick={handlePrev}
+                                                    disabled={currentIndex === 0}
+                                                    className={styles.carouselBtn}
+                                                >
+                                                    &larr; Prev
+                                                </motion.button>
+
+                                                <span className={styles.carouselIndicator}>
+                {Math.floor(currentIndex / itemsPerPage) + 1} /{" "}
+                                                    {Math.ceil(filteredPulses.length / itemsPerPage)}
+              </span>
+
+                                                <motion.button
+                                                    {...btnMotion}
+                                                    onClick={handleNext}
+                                                    disabled={currentIndex + itemsPerPage >= filteredPulses.length}
+                                                    className={styles.carouselBtn}
+                                                >
+                                                    Next &rarr;
+                                                </motion.button>
+                                            </div>
+                                        )}
+                                    </>
                                 )}
 
-                                {currentPulses.map((pulse) => (
-                                    <motion.div
-                                                key={pulse.id}
-                                                className={styles.objectCard}
-                                                onClick={() => navigate(`/pulse/${pulse.pulseType}/${pulse.id}`)}
-                                                initial={{ opacity: 0, y: 16 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                transition={{ duration: 0.3}}
-                                                whileHover={{ y: -3, boxShadow: "0 8px 24px rgba(0,0,0,0.1)" }} >
-                                        <div className={styles.objectImage}>
-                                            {pulse.images && pulse.images.length > 0 ? (
-                                                <img src={pulse.images[0]} alt={pulse.title} className={styles.pulseImage} />
-                                            ) : (
-                                                <span className={styles.imagePlaceholder}>{pulseFilter === "obiecte" ? <Boxes size={80} color={'black'}/> : <BriefcaseBusiness size={80} color={'black'}/>}</span>
-                                            )}
+                                {activeTab === "requests" && (
+                                    <>
+                                        <div className={styles.pulsesHeader}>
+                                            <h2 className={styles.sectionTitle}>My Urgent Requests</h2>
                                         </div>
-                                        <div className={styles.objectInfo}>
-                                            <h3 className={styles.objectName}>{pulse.title}</h3>
-                                            {pulse.phone_number && (
-                                                <p className={styles.pulsePhone}>
-                                                    <Phone size={16} color={'black'} style={{marginTop: '2px', marginRight: '5px'}}/>
-                                                    {pulse.phone_number}
+
+                                        <div className={styles.objectGrid}>
+                                            {filteredRequests.length === 0 && (
+                                                <p className={styles.emptyState}>
+                                                    No requests found.
                                                 </p>
                                             )}
-                                            <div className='flex'>
-                                            <CalendarDays color={'#475064'}/>
-                                                <p className={styles.pulseDate}>
-                                                    Postat:{" "}
-                                                    {pulse.timestamp ? new Date(pulse.timestamp.replace(" ", "T") + "Z").toLocaleString("ro-RO", {
-                                                        day: "2-digit",
-                                                        month: "2-digit",
-                                                        year: "numeric",
-                                                        hour: "2-digit",
-                                                        minute: "2-digit",
-                                                    }) : "—"}
-                                                </p>
-                                            </div>
-                                            <div className='flex'>
-                                                <DollarSign color={'#99cb91'}/>
-                                                {pulse.price != null && (
-                                                    <span className="font-bold">
-                                    {pulse.price} {pulse.currencyType || "lei"}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className={styles.objectActions}>
-                                            <motion.button
-                                                {...btnMotion}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleEditPulse(pulse);
-                                                }}
-                                                className={styles.editBtn}
-                                            >
-                                                <SquarePen className="mr-1" />Edit Post
-                                            </motion.button>
 
-                                            <motion.button
-                                                {...btnMotion}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    openDeletePulseModal(pulse.id);
-                                                }}
-                                                className={styles.removeBtn}
-                                            >
-                                                <X />Delete
-                                            </motion.button>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </div>
-
-                            {filteredPulses.length > itemsPerPage && (
-                                <div className={styles.carouselControls}>
-                                    <motion.button {...btnMotion}
-                                        onClick={handlePrev}
-                                        disabled={currentIndex === 0}
-                                        className={styles.carouselBtn}
-                                    >
-                                        &larr; Prev
-                                    </motion.button>
-
-                                    <span className={styles.carouselIndicator}>
-                    {Math.floor(currentIndex / itemsPerPage) + 1} / {Math.ceil(filteredPulses.length / itemsPerPage)}
+                                            {currentRequests.map((request) => (
+                                                <motion.div
+                                                    key={request.id}
+                                                    className={styles.objectCard}
+                                                    onClick={() => navigate(`/requests/${request.id}`)}
+                                                    initial={{ opacity: 0, y: 16 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    transition={{ duration: 0.3 }}
+                                                    whileHover={{ y: -3, boxShadow: "0 8px 24px rgba(0,0,0,0.1)" }}
+                                                >
+                                                    <div className={styles.objectImage}>
+                                                        {request.images && request.images.length > 0 ? (
+                                                            <img
+                                                                src={request.images[0]}
+                                                                alt={request.title}
+                                                                className={styles.pulseImage}
+                                                            />
+                                                        ) : (
+                                                            <span className={styles.imagePlaceholder}>
+                    <AlertCircle size={80} color={"black"} />
                 </span>
+                                                        )}
+                                                    </div>
 
-                                    <motion.button {...btnMotion}
-                                        onClick={handleNext}
-                                        disabled={currentIndex + itemsPerPage >= filteredPulses.length}
-                                        className={styles.carouselBtn}
-                                    >
-                                        Next &rarr;
-                                    </motion.button>
-                                </div>
-                            )}
+                                                    <div className={styles.objectInfo}>
+                                                        <h3 className={styles.objectName}>{request.title}</h3>
+
+                                                        {request.category && (
+                                                            <span className={styles.categoryBadge}>{request.category}</span>
+                                                        )}
+
+                                                        {request.address && (
+                                                            <p className={styles.pulsePhone}>
+                                                                <MapPin size={16} color={"black"} style={{ marginTop: "2px", marginRight: "5px" }} />
+                                                                {request.address}
+                                                            </p>
+                                                        )}
+
+                                                        <div className="flex">
+                                                            <CalendarDays color={"#475064"} />
+                                                            <p className={styles.pulseDate}>
+                                                                Requested:{" "}
+                                                                {request.timestamp
+                                                                    ? new Date(request.timestamp.replace(" ", "T") + "Z").toLocaleString("ro-RO", {
+                                                                        day: "2-digit",
+                                                                        month: "2-digit",
+                                                                        year: "numeric",
+                                                                        hour: "2-digit",
+                                                                        minute: "2-digit",
+                                                                    })
+                                                                    : "—"}
+                                                            </p>
+                                                        </div>
+
+                                                        <div className="flex">
+                                                            <DollarSign color={"#99cb91"} />
+                                                            {request.price != null && (
+                                                                <span className="font-bold">
+                        Max Price: {request.price} {request.currencyType || "lei"}
+                    </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className={styles.objectActions}>
+                                                        <motion.button
+                                                            {...btnMotion}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleEditRequest(request);
+                                                            }}
+                                                            className={styles.editBtn}
+                                                        >
+                                                            <SquarePen className="mr-1" />
+                                                            Edit Request
+                                                        </motion.button>
+
+                                                        <motion.button
+                                                            {...btnMotion}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                openDeleteRequestModal(request.id);
+                                                            }}
+                                                            className={styles.removeBtn}
+                                                        >
+                                                            <X />
+                                                            Delete
+                                                        </motion.button>
+                                                    </div>
+                                                </motion.div>
+                                            ))}
+                                        </div>
+
+                                        {/* Pagination Controls */}
+                                        {filteredRequests.length > itemsPerPage && (
+                                            <div className={styles.carouselControls}>
+                                                <motion.button
+                                                    {...btnMotion}
+                                                    onClick={handleReqPrev}
+                                                    disabled={reqIndex === 0}
+                                                    className={styles.carouselBtn}
+                                                >
+                                                    &larr; Prev
+                                                </motion.button>
+
+                                                <span className={styles.carouselIndicator}>
+                                                    {Math.floor(reqIndex / itemsPerPage) + 1} /{" "}
+                                                    {Math.ceil(filteredRequests.length / itemsPerPage)}
+                                                </span>
+
+                                                <motion.button
+                                                    {...btnMotion}
+                                                    onClick={handleReqNext}
+                                                    disabled={reqIndex + itemsPerPage >= filteredRequests.length}
+                                                    className={styles.carouselBtn}
+                                                >
+                                                    Next &rarr;
+                                                </motion.button>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </div>
                         </motion.div>
 
                         {/* — Place modal here, outside the card — */}
@@ -1755,6 +2126,159 @@ export default function Profile() {
                                                     setNewImages([]);
                                                 }}
                                                 disabled={editLoading}
+                                            >
+                                                Cancel
+                                            </motion.button>
+                                            <motion.button {...btnMotion} type="submit" disabled={editLoading}>
+                                                {editLoading ? "Saving..." : "Save"}
+                                            </motion.button>
+                                        </div>
+                                    </form>
+                                </motion.div>
+                            </motion.div>
+                        )}
+
+                        {editingRequest && (
+                            <motion.div
+                                className={styles.modalOverlay}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}>
+
+                                <motion.div
+                                    className={styles.modal}
+                                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    transition={{ duration: 0.2 }}>
+                                    <form onSubmit={handleSaveRequestEdit} className={styles.alertForm}>
+                                        <h2 className={styles.formTitle}>Edit listing</h2>
+
+                                        {/* TITLE */}
+                                        <div className={styles.inputGroup}>
+                                            <label>Title *</label>
+                                            <input
+                                                name="title"
+                                                value={requestEditForm.title}
+                                                onChange={(e) => setRequestEditForm(prev => ({ ...prev, title: e.target.value }))}
+                                                placeholder="Ex: Bicicletă de vânzare..."
+                                            />
+                                        </div>
+
+                                        {/* CATEGORY */}
+                                        <div className={styles.inputGroup}>
+                                            <label>Category</label>
+                                            <select
+                                                name="category"
+                                                value={requestEditForm.category}
+                                                onChange={(e) =>
+                                                    setRequestEditForm(prev => ({
+                                                        ...prev,
+                                                        category: e.target.value
+                                                    }))
+                                                }
+                                            >
+                                                <option value="">Select</option>
+
+                                                {CATEGORIES.map((cat) => (
+                                                    <option key={cat.id} value={cat.id}>
+                                                        {cat.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* IMAGE GRID */}
+                                        <div className={styles.imageUploadSection}>
+                                            <label className={styles.labelHeader}>Images</label>
+                                            <div className={styles.imageGrid}>
+                                                {/* Preview Images */}
+                                                {imagesPreview.map((img, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        className={styles.imagePreviewBox}
+                                                        style={{ backgroundImage: `url(${img})` }}
+                                                    >
+                                                        <motion.button {...btnMotion}
+                                                                       type="button"
+                                                                       onClick={() => removeRequestImageAt(idx)}
+                                                                       className={styles.removeImgBtn}
+                                                        >
+                                                            <X size={16} />
+                                                        </motion.button>
+                                                    </div>
+                                                ))}
+
+                                                {/* Add Images Button */}
+                                                {imagesPreview.length < 4 && (
+                                                    <label className={styles.uploadBtnBox}>
+                                                        <input
+                                                            ref={requestFileInputRef}
+                                                            type="file"
+                                                            multiple
+                                                            accept="image/*"
+                                                            onChange={handleRequestImageChange}
+                                                            hidden
+                                                        />
+                                                        <Plus size={24} />
+                                                        <span>Add</span>
+                                                    </label>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* DESCRIPTION */}
+                                        <div className={styles.inputGroup}>
+                                            <label>Description *</label>
+                                            <textarea
+                                                name="description"
+                                                value={requestEditForm.description}
+                                                onChange={(e) => setRequestEditForm(prev => ({ ...prev, description: e.target.value }))}
+                                                rows="4"
+                                            />
+                                        </div>
+
+                                        {/* PRICE */}
+                                        <div className={styles.inputGroup}>
+                                            <label>Max Price</label>
+                                            <input
+                                                name="price"
+                                                type="number"
+                                                step="0.01"
+                                                value={requestEditForm.price}
+                                                onChange={(e) => setRequestEditForm(prev => ({ ...prev, price: e.target.value }))}
+                                            />
+                                        </div>
+
+                                        {/* CURRENCY */}
+                                        <div className={styles.inputGroup}>
+                                            <label>Currency</label>
+                                            <input
+                                                name="currencyType"
+                                                value={requestEditForm.currencyType}
+                                                onChange={(e) => setRequestEditForm(prev => ({ ...prev, currencyType: e.target.value }))}
+                                            />
+                                        </div>
+
+                                        {/* ERROR DISPLAY */}
+                                        {editError && (
+                                            <p className={styles.error}>
+                                                {Array.isArray(editError) ? JSON.stringify(editError) : editError}
+                                            </p>
+                                        )}
+
+                                        {/* ACTION BUTTONS */}
+                                        <div className={styles.modalActions}>
+                                            <motion.button {...btnMotion}
+                                                           type="button"
+                                                           onClick={() => {
+                                                               setEditingRequest(null);
+                                                               setEditLoading(false);
+                                                               setEditError(null);
+                                                               setImagesPreview([]);
+                                                               setNewImages([]);
+                                                           }}
+                                                           disabled={editLoading}
                                             >
                                                 Cancel
                                             </motion.button>
@@ -1927,14 +2451,6 @@ export default function Profile() {
                                                                 >
                                                                     Give feedback
                                                                 </motion.button>
-
-                                                                <motion.button
-                                                                    {...btnMotion}
-                                                                    onClick={() => openDeleteModal(item)}
-                                                                    className={styles.deleteIconBtn}
-                                                                >
-                                                                    <X />
-                                                                </motion.button>
                                                             </div>
                                                         </div>
                                                     ) : (
@@ -2068,17 +2584,6 @@ export default function Profile() {
                                                                 className={styles.feedbackBtn}
                                                             >
                                                                 Give Feedback
-                                                            </motion.button>
-
-                                                            <motion.button
-                                                                {...btnMotion}
-                                                                onClick={() =>
-                                                                    openDeleteOfferModal(item)
-                                                                }
-                                                                className={styles.deleteIconBtn}
-                                                                aria-label="Delete"
-                                                            >
-                                                                <X />
                                                             </motion.button>
                                                         </div>
                                                     </div>
@@ -2344,6 +2849,32 @@ export default function Profile() {
                         </motion.div>
                     </motion.div>
                 )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                    {deleteRequestModal.show && (
+                        <motion.div className={styles.modalOverlay}
+                                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                            <motion.div className={styles.modal}
+                                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 0.95 }}
+                                        transition={{ duration: 0.2 }}>
+                                <h3 className={styles.modalTitle}>Delete the request?</h3>
+                                <p className={styles.modalText}>
+                                    This action cannot be undone. Are you sure you want to delete this request?
+                                </p>
+                                <div className={styles.modalActions}>
+                                    <motion.button {...btnMotion} onClick={closeDeleteRequestModal} className={styles.modalCancel}>
+                                        Cancel
+                                    </motion.button>
+                                    <motion.button {...btnMotion} onClick={handleDeleteRequest} className={styles.modalDelete}>
+                                        Yes, delete
+                                    </motion.button>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
                 </AnimatePresence>
 
                 <AnimatePresence>

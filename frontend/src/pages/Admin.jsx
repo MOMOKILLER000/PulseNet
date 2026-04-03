@@ -16,6 +16,19 @@ function getCookie(name) {
     return null;
 }
 
+function formatTimestamp(value) {
+    if (!value) return "-";
+
+    const date = new Date(value.replace(" ", "T"));
+    if (Number.isNaN(date.getTime())) return value;
+
+    return date.toLocaleString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+    });
+}
+
 function formatDateTime(value) {
     if (!value) return "-";
     const date = new Date(value);
@@ -56,6 +69,12 @@ const Admin = () => {
     const [reports, setReports] = useState([]);
     const [flaggedData, setFlaggedData] = useState({ pulses: [], alerts: [], urgent_requests: [] });
     const [loadingData, setLoadingData] = useState(false);
+
+    const [feedbackData, setFeedbackData] = useState({
+        rental_signals: [],
+        rental_feedbacks: [],
+        user_contacts: [],
+    });
 
     // Selected report for modal
     const [selectedReport, setSelectedReport] = useState(null);
@@ -131,6 +150,65 @@ const Admin = () => {
         }
     };
 
+
+    const handleDeleteFeedbackItem = async (item, itemType) => {
+        const confirmDelete = window.confirm(
+            `Are you sure you want to delete this ${itemType}? This action cannot be undone.`
+        );
+
+        if (!confirmDelete) return;
+
+        setDeletingItemId(item.id);
+
+        try {
+            let url = '';
+
+            // Adjust these endpoints to match your backend
+            if (itemType === 'rental_signal') {
+                url = `http://localhost:8000/accounts/delete-rental-signal/${item.id}/`;
+            } else if (itemType === 'rental_feedback') {
+                url = `http://localhost:8000/accounts/delete-rental-feedback/${item.id}/`;
+            } else if (itemType === 'user_contact') {
+                url = `http://localhost:8000/accounts/delete-user-contact/${item.id}/`;
+            }
+
+            const response = await fetch(url, {
+                method: 'DELETE',
+                credentials: 'include',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Delete failed');
+            }
+
+            setFeedbackData((prev) => ({
+                ...prev,
+                rental_signals:
+                    itemType === 'rental_signal'
+                        ? prev.rental_signals.filter((x) => x.id !== item.id)
+                        : prev.rental_signals,
+                rental_feedbacks:
+                    itemType === 'rental_feedback'
+                        ? prev.rental_feedbacks.filter((x) => x.id !== item.id)
+                        : prev.rental_feedbacks,
+                user_contacts:
+                    itemType === 'user_contact'
+                        ? prev.user_contacts.filter((x) => x.id !== item.id)
+                        : prev.user_contacts,
+            }));
+        } catch (error) {
+            console.error(error);
+            alert('Could not delete this item.');
+        } finally {
+            setDeletingItemId(null);
+        }
+    };
+
     useEffect(() => {
         const fetchSystemData = async () => {
             if (activeTab === 'users') return;
@@ -139,16 +217,34 @@ const Admin = () => {
             try {
                 if (activeTab === 'reports' && reports.length === 0) {
                     const res = await fetch(`http://localhost:8000/accounts/admin_alert_reports/`, {
-                        credentials: "include"
+                        credentials: "include",
                     });
                     const data = await res.json();
                     if (data.reports) setReports(data.reports);
                 } else if (activeTab === 'flagged' && flaggedData.pulses.length === 0) {
                     const res = await fetch(`http://localhost:8000/accounts/flagged_posts/`, {
-                        credentials: "include"
+                        credentials: "include",
                     });
                     const data = await res.json();
                     if (data.success) setFlaggedData(data.flagged);
+                } else if (
+                    activeTab === 'feedbacks' &&
+                    feedbackData.rental_signals.length === 0 &&
+                    feedbackData.rental_feedbacks.length === 0 &&
+                    feedbackData.user_contacts.length === 0
+                ) {
+                    const res = await fetch(`http://localhost:8000/accounts/feedbacks/`, {
+                        credentials: "include",
+                    });
+                    const data = await res.json();
+
+                    if (data.success) {
+                        setFeedbackData({
+                            rental_signals: data.feedbacks?.rental_signals || [],
+                            rental_feedbacks: data.feedbacks?.rental_feedbacks || [],
+                            user_contacts: data.feedbacks?.user_contacts || [],
+                        });
+                    }
                 }
             } catch (err) {
                 console.error("Data retrieval failed:", err);
@@ -158,7 +254,12 @@ const Admin = () => {
         };
 
         fetchSystemData();
-    }, [activeTab, reports.length, flaggedData.pulses.length]);
+    }, [
+        activeTab,
+        reports.length,
+        flaggedData.pulses.length,
+        feedbackData.rental_signals.length,
+    ]);
 
     useEffect(() => {
         if (!query.trim()) {
@@ -346,6 +447,12 @@ const Admin = () => {
                         onClick={() => setActiveTab('flagged')}
                     >
                         Flagged Content
+                    </button>
+                    <button
+                        className={activeTab === 'feedbacks' ? styles.activeTab : styles.tab}
+                        onClick={() => setActiveTab('feedbacks')}
+                    >
+                        Community Feedbacks
                     </button>
                 </div>
             </header>
@@ -760,6 +867,226 @@ const Admin = () => {
                                                             type="button"
                                                             className={styles.deleteMiniButton}
                                                             onClick={() => handleDeleteFlaggedItem(item, 'urgent_request')}
+                                                            disabled={deletingItemId === item.id}
+                                                        >
+                                                            {deletingItemId === item.id ? 'Deleting...' : 'Delete'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeTab === 'feedbacks' && (
+                    <div className={styles.panel}>
+                        <div className={styles.flaggedHeader}>
+                            <div>
+                                <h2 className={styles.panelTitle}>Feedback Review</h2>
+                                <p className={styles.flaggedSubtitle}>
+                                    Review rental signals, pulse feedback, and urgent request feedback.
+                                </p>
+                            </div>
+
+                            <div className={styles.flaggedSummary}>
+                                <div className={styles.summaryChip}>
+                                    Rental Signals <span>{feedbackData.rental_signals.length}</span>
+                                </div>
+                                <div className={styles.summaryChip}>
+                                    Pulse Feedbacks <span>{feedbackData.rental_feedbacks.length}</span>
+                                </div>
+                                <div className={styles.summaryChip}>
+                                    Request Feedbacks <span>{feedbackData.user_contacts.length}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {loadingData ? (
+                            <div className={styles.loader}>Loading Feedback Data...</div>
+                        ) : (
+                            <div className={styles.gridContainer}>
+                                {/* Rental Signals */}
+                                <div className={styles.flaggedCard}>
+                                    <div className={styles.cardHeader}>
+                                        <span>Rental Signals</span>
+                                        <span className={styles.countBadge}>{feedbackData.rental_signals.length}</span>
+                                    </div>
+
+                                    <div className={styles.cardBody}>
+                                        {feedbackData.rental_signals.length === 0 ? (
+                                            <div className={styles.emptyState}>No rental signals.</div>
+                                        ) : (
+                                            feedbackData.rental_signals.map((item) => (
+                                                <div
+                                                    key={item.id}
+                                                    className={styles.flaggedItem}
+                                                    onClick={() => navigate(`/rental-signals/${item.id}`)}
+                                                    title="Open rental signal"
+                                                >
+                                                    <div className={styles.itemTopRow}>
+                                                        <h4 className={styles.itemTitle}>
+                                                            {item.rental.pulse_title || `Rental #${item.rental.id}`}
+                                                        </h4>
+                                                        <span className={styles.toxScore}>
+                                            {item.resolved ? 'Resolved' : 'Pending'}
+                                        </span>
+                                                    </div>
+
+                                                    <p className={styles.metaData}>
+                                                        Reporter: <strong>@{item.reporter.username}</strong>
+                                                    </p>
+
+                                                    <p className={styles.subText}>{item.message}</p>
+
+                                                    <p className={styles.metaData}>
+                                                        {item.reported_by_owner ? 'Reported by owner' : 'Reported by renter'}
+                                                    </p>
+
+                                                    <p className={styles.metaData}>
+                                                        Created:{" "}
+                                                        {formatTimestamp(item.created_at)}
+                                                    </p>
+
+                                                    <div className={styles.itemActions} onClick={(e) => e.stopPropagation()}>
+                                                        <button
+                                                            type="button"
+                                                            className={styles.openButton}
+                                                            onClick={() => navigate(`/rental-signals/${item.id}`)}
+                                                        >
+                                                            Open
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className={styles.deleteMiniButton}
+                                                            onClick={() => handleDeleteFeedbackItem(item, 'rental_signal')}
+                                                            disabled={deletingItemId === item.id}
+                                                        >
+                                                            {deletingItemId === item.id ? 'Deleting...' : 'Delete'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Pulse Feedbacks */}
+                                <div className={styles.flaggedCard}>
+                                    <div className={styles.cardHeader}>
+                                        <span>Pulse Feedbacks</span>
+                                        <span className={styles.countBadge}>{feedbackData.rental_feedbacks.length}</span>
+                                    </div>
+
+                                    <div className={styles.cardBody}>
+                                        {feedbackData.rental_feedbacks.length === 0 ? (
+                                            <div className={styles.emptyState}>No pulse feedbacks.</div>
+                                        ) : (
+                                            feedbackData.rental_feedbacks.map((item) => (
+                                                <div
+                                                    key={item.id}
+                                                    className={styles.flaggedItem}
+                                                    onClick={() => navigate(`/pulse/${item.pulse.id}`)}
+                                                    title="Open pulse feedback"
+                                                >
+                                                    <div className={styles.itemTopRow}>
+                                                        <h4 className={styles.itemTitle}>
+                                                            {item.pulse.title || `Pulse #${item.pulse.id}`}
+                                                        </h4>
+                                                        <span className={styles.toxScore}>{item.rating}/10</span>
+                                                    </div>
+
+                                                    <p className={styles.metaData}>
+                                                        Reviewer: <strong>@{item.reviewer.username}</strong>
+                                                    </p>
+                                                    <p className={styles.metaData}>
+                                                        Owner: <strong>@{item.owner.username}</strong>
+                                                    </p>
+
+                                                    <p className={styles.subText}>{item.comment || 'No comment.'}</p>
+
+                                                    <p className={styles.metaData}>
+                                                        Created:{" "}
+                                                        {formatTimestamp(item.created_at)}
+                                                    </p>
+
+                                                    <div className={styles.itemActions} onClick={(e) => e.stopPropagation()}>
+                                                        <button
+                                                            type="button"
+                                                            className={styles.openButton}
+                                                            onClick={() => navigate(`/pulse/${item.pulse.id}`)}
+                                                        >
+                                                            Open
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className={styles.deleteMiniButton}
+                                                            onClick={() => handleDeleteFeedbackItem(item, 'rental_feedback')}
+                                                            disabled={deletingItemId === item.id}
+                                                        >
+                                                            {deletingItemId === item.id ? 'Deleting...' : 'Delete'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Request Feedbacks */}
+                                <div className={styles.flaggedCard}>
+                                    <div className={styles.cardHeader}>
+                                        <span>Request Feedbacks</span>
+                                        <span className={styles.countBadge}>{feedbackData.user_contacts.length}</span>
+                                    </div>
+
+                                    <div className={styles.cardBody}>
+                                        {feedbackData.user_contacts.length === 0 ? (
+                                            <div className={styles.emptyState}>No request feedbacks.</div>
+                                        ) : (
+                                            feedbackData.user_contacts.map((item) => (
+                                                <div
+                                                    key={item.id}
+                                                    className={styles.flaggedItem}
+                                                    onClick={() => navigate(`/requests/${item.request.id}`)}
+                                                    title="Open request feedback"
+                                                >
+                                                    <div className={styles.itemTopRow}>
+                                                        <h4 className={styles.itemTitle}>
+                                                            {item.request.title || `Request #${item.request.id}`}
+                                                        </h4>
+                                                        <span className={styles.toxScore}>{item.rating}/10</span>
+                                                    </div>
+
+                                                    <p className={styles.metaData}>
+                                                        Reviewer: <strong>@{item.reviewer.username}</strong>
+                                                    </p>
+                                                    <p className={styles.metaData}>
+                                                        Owner: <strong>@{item.owner.username}</strong>
+                                                    </p>
+
+                                                    <p className={styles.subText}>{item.comment || 'No comment.'}</p>
+
+                                                    <p className={styles.metaData}>
+                                                        Created:{" "}
+                                                        {formatTimestamp(item.created_at)}
+                                                    </p>
+
+                                                    <div className={styles.itemActions} onClick={(e) => e.stopPropagation()}>
+                                                        <button
+                                                            type="button"
+                                                            className={styles.openButton}
+                                                            onClick={() => navigate(`/requests/${item.request.id}`)}
+                                                        >
+                                                            Open
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className={styles.deleteMiniButton}
+                                                            onClick={() => handleDeleteFeedbackItem(item, 'user_contact')}
                                                             disabled={deletingItemId === item.id}
                                                         >
                                                             {deletingItemId === item.id ? 'Deleting...' : 'Delete'}

@@ -71,6 +71,8 @@ urlpatterns = [
     path("alerts/weather/", views.get_current_weather, name="get_current_weather"),
     #Urgent requests
     path('urgent-requests/create/', views.create_urgent_request, name='create_urgent_request'),
+    path('remove_request/<int:request_id>/', views.remove_request, name='remove_request'),
+    path("update_request/<int:request_id>/", views.update_request, name="update_request"),
     path("urgent-requests/", views.urgent_requests_list, name="urgent_requests_list"),
     path("urgent-request/<int:request_id>/", views.get_request_by_id, name="urgent_request_detail"),
     path('urgent-requests/comments/<int:request_id>/', views.get_request_comments, name='get_request_comments'),
@@ -86,9 +88,13 @@ urlpatterns = [
     path('ban-user/<int:user_id>/', views.ban_user, name='ban_user'),
     path('unban-user/<int:user_id>/', views.unban_user, name='unban_user'),
     path('flagged_posts/', views.flagged_posts, name='flagged_posts'),
+    path('feedbacks/', views.admin_feedbacks, name='feedbacks'),
     path('delete_report/<int:report_id>/', views.delete_report, name='delete_report'),
     path('delete-pulse/<int:id>/', views.delete_pulse, name='delete_pulse'),
     path('delete-alert/<int:id>/', views.delete_alert, name='delete_alert'),
     path('delete-urgent-request/<int:id>/', views.delete_urgent_request, name='delete_urgent_request'),
+    path("delete-rental-signal/<int:id>/", views.delete_rental_signal, name='delete_rental_signal'),
+    path("delete-rental-feedback/<int:id>/", views.delete_rental_feedback, name='delete_rental_feedback'),
+    path("delete-user-contact/<int:id>/", views.delete_user_contact, name='delete_user_contact'),
 
 ]
