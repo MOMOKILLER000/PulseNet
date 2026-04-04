@@ -1,6 +1,7 @@
 import React from "react";
 import styles from "../styles/Components/Footer.module.css";
 import '../index.css';
+import {Link} from "react-router-dom";
 
 const Footer = () => {
     return (
@@ -11,6 +12,7 @@ const Footer = () => {
                 </p>
                 <p>
                     Designed & Developed by Buzdugan Mihnea-Andrei & Covaliuc Lucian.
+                    <Link to="/contact" className={styles.link}> Contact us</Link>
                 </p>
             </div>
             <p className={styles["footer-quote"]}>

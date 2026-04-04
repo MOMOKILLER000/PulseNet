@@ -72,6 +72,20 @@
     margin-top: 6px;
 }
 
+.link{
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 500;
+    margin-left: 5px;
+    transition: color 0.3s ease, border-bottom 0.3s ease;
+    border-bottom: 1px solid transparent;
+}
+
+.link:hover {
+    color: #0056b3;
+    border-bottom: 1px solid #0056b3;
+}
+
 /* Animation */
 @keyframes fadeIn {
     from {
