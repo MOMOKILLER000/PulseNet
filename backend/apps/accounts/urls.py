@@ -96,5 +96,5 @@ urlpatterns = [
     path("delete-rental-signal/<int:id>/", views.delete_rental_signal, name='delete_rental_signal'),
     path("delete-rental-feedback/<int:id>/", views.delete_rental_feedback, name='delete_rental_feedback'),
     path("delete-user-contact/<int:id>/", views.delete_user_contact, name='delete_user_contact'),
-
+    path("contact/create/", views.create_contact_post, name='create_contact_post'),
 ]

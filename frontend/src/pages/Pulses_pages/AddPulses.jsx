@@ -1,9 +1,26 @@
 import React, { useState, useRef } from "react";
+import Select from 'react-select';
+import * as Flags from 'country-flag-icons/react/3x2';
+import { AsYouType, isValidPhoneNumber, getCountries, getCountryCallingCode, parsePhoneNumberWithError, getExampleNumber } from 'libphonenumber-js';
+import examples from 'libphonenumber-js/mobile/examples';
 import styles from '../../styles/Pulses_pages/addpulses.module.css';
 import Navbar from "../../components/Navbar";
 import {Link} from "react-router-dom";
 import Footer from "@/components/Footer";
 import {X} from "lucide-react";
+
+const FlagIcon = ({ countryCode, size }) => {
+    const Flag = Flags[countryCode];
+    if (!Flag) return <span style={{ fontSize: size }}>{countryCode}</span>;
+    return <Flag style={{ width: size, height: 'auto', display: 'block' }} />;
+};
+
+const COUNTRY_OPTIONS = getCountries().map(code => {
+    try {
+        const dialCode = getCountryCallingCode(code);
+        return { value: code, label: `${code} (+${dialCode})`, dialCode: `+${dialCode}` };
+    } catch { return null; }
+}).filter(Boolean);
 
 function getCookie(name) {
     let cookieValue = null;
@@ -28,12 +45,69 @@ function AddPulses() {
     const [currencyType, setCurrencyType] = useState("RON");
     const [description, setDescription] = useState("");
     const [phone, setPhone] = useState("");
+    const [selectedCountry, setSelectedCountry] = useState(
+        COUNTRY_OPTIONS.find(c => c.value === 'RO') || COUNTRY_OPTIONS[0]
+    );
+    const [phoneError, setPhoneError] = useState("");
     const [imagesPreview, setImagesPreview] = useState([]); // array of object URLs for preview
     const [selectedFiles, setSelectedFiles] = useState([]); // array of File objects
     const [isGettingLocation, setIsGettingLocation] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const fileInputRef = useRef(null);
+
+    const getPhonePlaceholder = (countryCode) => {
+        try {
+            const example = getExampleNumber(countryCode, examples);
+            if (!example) return '';
+            const intl = example.formatInternational();
+            const dialCode = `+${example.countryCallingCode}`;
+            return intl.replace(dialCode, '').trim();
+        } catch {
+            return '';
+        }
+    };
+
+    const handlePhoneChange = (e) => {
+        const formatted = new AsYouType(selectedCountry.value).input(e.target.value);
+        setPhone(formatted);
+        if (formatted && !isValidPhoneNumber(formatted, selectedCountry.value)) {
+            setPhoneError(`Invalid number for ${selectedCountry.value}`);
+        } else {
+            setPhoneError('');
+        }
+    };
+
+    const handleCountryChange = (option) => {
+        setSelectedCountry(option);
+        setPhone('');
+        setPhoneError('');
+    };
+
+    const customSelectStyles = {
+        control: (provided) => ({
+            ...provided,
+            border: 'none',
+            boxShadow: 'none',
+            backgroundColor: '#f2f4f5',
+            minHeight: '100%',
+            cursor: 'pointer',
+            borderRight: '2px solid #e0e2e3',
+            borderRadius: '4px 0 0 4px',
+            width: '110px',
+        }),
+        valueContainer: (provided) => ({ ...provided, padding: '0 8px', justifyContent: 'center' }),
+        dropdownIndicator: (provided) => ({ ...provided, padding: '4px' }),
+        indicatorSeparator: () => ({ display: 'none' }),
+        menu: (provided) => ({ ...provided, width: '250px' }),
+        menuPortal: (provided) => ({ ...provided, zIndex: 9999 }),
+        option: (provided, state) => ({
+            ...provided,
+            backgroundColor: state.isFocused ? '#f2f4f7' : 'white',
+            color: '#002f34',
+            cursor: 'pointer',
+        }),
+    };
 
     const handleImageChange = (e) => {
         const files = Array.from(e.target.files || []);
@@ -74,7 +148,7 @@ function AddPulses() {
     const getAutomaticLocation = () => {
         return new Promise((resolve, reject) => {
             if (!navigator || !navigator.geolocation) {
-                reject(new Error("Browserul nu suportă Geolocation."));
+                reject(new Error("Your browser does not support Geolocation."));
                 return;
             }
 
@@ -97,7 +171,12 @@ function AddPulses() {
     const addPulse = async () => {
         // validate required fields
         if (!title.trim() || !description.trim() || !phone.trim()) {
-            alert("Te rugăm să completezi câmpurile obligatorii (*)");
+            alert("Please fill in all required fields (*)");
+            return;
+        }
+
+        if (!isValidPhoneNumber(phone, selectedCountry.value)) {
+            alert(`The phone number entered is not valid for ${selectedCountry.value}.`);
             return;
         }
 
@@ -106,8 +185,8 @@ function AddPulses() {
         try {
             location = await getAutomaticLocation();
         } catch (err) {
-            console.error("Eroare la obținerea locației:", err);
-            alert("Nu am putut obține locația. Trebuie să permiți accesul la locație pentru a publica anunțul.");
+            console.error("Error getting location:", err);
+            alert("Could not get your location. You must allow location access to publish the listing.");
             setIsGettingLocation(false);
             return; // IMPORTANT: do not proceed with the API call if coords not fetched
         } finally {
@@ -123,7 +202,8 @@ function AddPulses() {
             formData.append("pulse_type", pulseType);
             formData.append("price", price || 0);
             formData.append("currencyType", currencyType);
-            formData.append("phone_number", phone.trim());
+            const e164Phone = parsePhoneNumberWithError(phone, selectedCountry.value).format('E.164');
+            formData.append("phone_number", e164Phone);
             formData.append("is_available", "true");
 
             formData.append("lat", location.lat);
@@ -159,21 +239,21 @@ function AddPulses() {
                 setSelectedFiles([]);
                 if (fileInputRef.current) fileInputRef.current.value = null;
 
-                alert("Anunțul a fost adăugat cu succes!");
+                alert("Listing published successfully!");
             } else {
                 // try to parse error response
                 let errorData = null;
                 try {
                     errorData = await response.json();
                 } catch (e) {
-                    console.error("Nu s-a putut converti eroarea la JSON.", e);
+                    console.error("Could not parse error response as JSON.", e);
                 }
-                console.error("Eroare de la server:", errorData || response.statusText);
-                alert(errorData?.error || "A apărut o eroare la server. Vezi consola pentru detalii.");
+                console.error("Server error:", errorData || response.statusText);
+                alert(errorData?.error || "A server error occurred. Check the console for details.");
             }
         } catch (error) {
             console.error("Error adding pulse:", error);
-            alert("A apărut o eroare. Vezi consola pentru detalii.");
+            alert("An error occurred. Check the console for details.");
         } finally {
             setIsSubmitting(false);
         }
@@ -186,19 +266,19 @@ function AddPulses() {
             </div>
             <div className={styles["anunt-container"]}>
                 <div className="flex justify-between items-center">
-                <h1 className={styles["anunt-header"]}>Publică un anunț</h1>
+                <h1 className={styles["anunt-header"]}>Post a listing</h1>
                 <Link to="/create-request" className="mb-5 text-[#3B82A6] underline hover:text-[#2F6B87]  cursor-pointer ">Have an urgent request?</Link>
                 </div>
 
                 {/* --- Secțiunea Detalii --- */}
                 <section className={styles["form-section"]}>
-                    <h3 className={styles["section-title"]}>Dă cât mai multe detalii!</h3>
+                    <h3 className={styles["section-title"]}>Add as many details as possible!</h3>
 
                     <div className={styles["form-group"]}>
-                        <label className={styles["label-text"]}>Adaugă titlul *</label>
+                        <label className={styles["label-text"]}>Title *</label>
                         <input
                             type="text"
-                            placeholder="Ex.. Samsung S26"
+                            placeholder="e.g. Samsung S26"
                             className={styles["input-field"]}
                             maxLength={70}
                             value={title}
@@ -209,19 +289,19 @@ function AddPulses() {
 
                     <div className={styles["row-group"]}>
                         <div className={styles["form-group-half"]}>
-                            <label className={styles["label-text"]}>Categoria*</label>
+                            <label className={styles["label-text"]}>Category *</label>
                             <select
                                 className={styles["select-field"]}
                                 value={pulseType}
                                 onChange={(e) => setPulseType(e.target.value)}
                             >
-                                <option value="servicii">Servicii / Evenimente</option>
-                                <option value="obiecte">Obiecte / Produse</option>
+                                <option value="servicii">Services / Events</option>
+                                <option value="obiecte">Objects / Products</option>
                             </select>
                         </div>
 
                         <div className={styles["price-row-wrapper"]}>
-                            <label className={styles["label-text"]}>Preț *</label>
+                            <label className={styles["label-text"]}>Price *</label>
                             <div className={styles["price-input-container"]}>
                                 <input
                                     type="number"
@@ -246,9 +326,9 @@ function AddPulses() {
 
                 {/* --- Secțiunea Imagini --- */}
                 <section className={styles["form-section"]}>
-                    <h3 className={styles["section-title"]}>Imagini</h3>
+                    <h3 className={styles["section-title"]}>Images</h3>
                     <p className={styles["helper-text"]}>
-                        Prima imagine va fi cea principala. Poți adauga pana la 7 imagini.
+                        The first image will be the main one. You can add up to 7 images.
                     </p>
 
                     <div className={styles["image-upload-grid"]}>
@@ -264,7 +344,7 @@ function AddPulses() {
                                 onChange={handleImageChange}
                                 hidden
                             />
-                            <span>Adaugă imagini</span>
+                            <span>Add images</span>
                         </label>
 
                         {/* Imagini încărcate */}
@@ -302,16 +382,16 @@ function AddPulses() {
                 {/* --- Secțiunea Descriere --- */}
                 <section className={styles["form-section"]}>
                     <div className={styles["form-group"]}>
-                        <label className={styles["label-text"]}>Descriere *</label>
+                        <label className={styles["label-text"]}>Description *</label>
                         <textarea
-                            placeholder="Încearcă să scrii ce ai vrea tu să afli dacă te-ai uita la acest anunț"
+                            placeholder="Try to write what you would want to know if you were looking at this listing"
                             className={styles["textarea-field"]}
                             rows={6}
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                         />
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <p className={styles["helper-text"]}>Introdu cel puțin 40 caractere</p>
+                            <p className={styles["helper-text"]}>Enter at least 40 characters</p>
                             <p className={styles["counter-text"]}>{description.length}/9000</p>
                         </div>
                     </div>
@@ -319,21 +399,46 @@ function AddPulses() {
 
                 {/* --- Secțiunea Contact + Submit --- */}
                 <section className={styles["form-section"]}>
-                    <h3 className={styles["section-title"]}>Contact</h3>
+                    <h3 className={styles["section-title"]}>Contact details</h3>
                     <div
                         className={styles["contact-submit-row"]}
                         style={{ display: "flex", alignItems: "flex-end", gap: "20px" }}
                     >
-                        <div className={styles["form-group"]} style={{ flex: 1, marginBottom: 0 }}>
-                            <label className={styles["label-text"]}>Număr de telefon *</label>
-                            <input
-                                type="tel"
-                                maxLength={10}
-                                placeholder="07xx xxx xxx"
-                                className={styles["input-field"]}
-                                value={phone}
-                                onChange={(e) => setPhone(e.target.value)}
-                            />
+                        <div className={styles["form-group"]} style={{ flex: 1, marginBottom: 0, position: 'relative' }}>
+                            <label className={styles["label-text"]}>Phone number *</label>
+                            <div className={`${styles["phoneInput"]} ${phoneError ? styles["phoneInputError"] : ''}`}>
+                                <Select
+                                    options={COUNTRY_OPTIONS}
+                                    value={selectedCountry}
+                                    onChange={handleCountryChange}
+                                    styles={customSelectStyles}
+                                    isSearchable={true}
+                                    placeholder="🌐"
+                                    menuPortalTarget={document.body}
+                                    menuPosition="fixed"
+                                    formatOptionLabel={(option, { context }) =>
+                                        context === 'menu' ? (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <FlagIcon countryCode={option.value} size={20} />
+                                                <span>{option.value} ({option.dialCode})</span>
+                                            </div>
+                                        ) : (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <FlagIcon countryCode={option.value} size={22} />
+                                                <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{option.value}</span>
+                                            </div>
+                                        )
+                                    }
+                                />
+                                <span className={styles["dialCodePreview"]}>{selectedCountry.dialCode}</span>
+                                <input
+                                    type="tel"
+                                    placeholder={getPhonePlaceholder(selectedCountry.value)}
+                                    value={phone}
+                                    onChange={handlePhoneChange}
+                                />
+                            </div>
+                            {phoneError && <span className={styles["phoneError"]}>{phoneError}</span>}
                         </div>
 
                         <button
@@ -352,7 +457,7 @@ function AddPulses() {
                                 height: "46px",
                             }}
                         >
-                            {isGettingLocation ? "Obțin locația..." : isSubmitting ? "Se trimite..." : "Publică anunțul"}
+                            {isGettingLocation ? "Processing..." : isSubmitting ? "Submitting..." : "Publish listing"}
                         </button>
                     </div>
                 </section>

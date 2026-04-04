@@ -14,16 +14,6 @@ import interactionPlugin from "@fullcalendar/interaction";
 import Loading from "@/components/Loading";
 import Footer from "@/components/Footer";
 
-function formatLocation(location) {
-    if (!location) return "Not specified";
-    if (Array.isArray(location)) {
-        return `${location[1].toFixed(4)}°N, ${location[0].toFixed(4)}°E`;
-    }
-    if (location.coordinates) {
-        return `${location.coordinates[1].toFixed(4)}°N, ${location.coordinates[0].toFixed(4)}°E`;
-    }
-    return String(location);
-}
 
 function getLocationCoords(location) {
     const defaultCoords = [27.5766, 47.1585];
@@ -106,9 +96,6 @@ export default function PulseDetails() {
     const [commentsPage, setCommentsPage] = useState(1);
     const [commentsHasMore, setCommentsHasMore] = useState(false);
     const [isPosting, setIsPosting] = useState(false);
-
-    // local reviews state (for immediate UI preview)
-    const [formattedAddress, setFormattedAddress] = useState("Loading address...");
 
     const COMMENTS_PAGE_SIZE = 10;
 
@@ -449,7 +436,7 @@ export default function PulseDetails() {
                             {/* INFO GRID */}
                             <div className={styles.infoGrid}>
                                 <div><span>Posted</span><strong>{isoToLocalString(pulse.timestamp)}</strong></div>
-                                <div><span>Location</span><strong>{pulse.address}</strong></div>
+                                <div><span>Location</span><strong>{pulse.address || "Address not available"}</strong></div>
                                 <div><span>Condition</span><strong>{pulse.condition || "N/A"}</strong></div>
                             </div>
 

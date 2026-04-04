@@ -25,7 +25,7 @@ from math import ceil
 from .decorators import api_login_required, check_hate_speech
 from .models import PendingFollow, Pulse, Friendship, Follow, PulseImage, FavoritePulse, PulseRental, Alert, AlertImage, \
     PulseComment, PulseRating, Notification, UrgentRequest, UrgentRequestImage, AlertConfirm, AlertReport, \
-    RequestComment, UrgentRequestOffer, AlertComment, PulseRentalSignal, PulseFeedback, UrgentRequestFeedback
+    RequestComment, UrgentRequestOffer, AlertComment, PulseRentalSignal, PulseFeedback, UrgentRequestFeedback, Contact
 import secrets
 import string
 from django.contrib.auth.hashers import make_password
@@ -3744,3 +3744,46 @@ def delete_user_contact(request, id):
         return JsonResponse({"success": True})
     except UrgentRequestFeedback.DoesNotExist:
         return JsonResponse({"error": "Not found"}, status=404)
+
+@require_http_methods(["POST"])
+@login_required
+def create_contact_post(request):
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    first_name = data.get("first_name", "").strip()
+    last_name = data.get("last_name", "").strip()
+    email = data.get("email", "").strip()
+    phone_number = data.get("phone_number", "").strip()
+    complaint_message = data.get("complaint_message", "").strip()
+
+    if not all([first_name, last_name, email, complaint_message]):
+        return JsonResponse({"error": "first_name, last_name, email and complaint_message are required."}, status=400)
+
+    if len(complaint_message) > 500:
+        return JsonResponse({"error": "Message must be 500 characters or fewer."}, status=400)
+
+    contact = Contact.objects.create(
+        user=request.user,
+        first_name=first_name,
+        last_name=last_name,
+        email=email,
+        phone_number=phone_number or None,
+        complaint_message=complaint_message,
+    )
+
+    return JsonResponse({
+        "success": True,
+        "contact": {
+            "id": contact.id,
+            "first_name": contact.first_name,
+            "last_name": contact.last_name,
+            "email": contact.email,
+            "phone_number": contact.phone_number,
+            "complaint_message": contact.complaint_message,
+            "created_at": contact.created_at.isoformat(),
+        }
+    }, status=201)
+
