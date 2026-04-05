@@ -20,6 +20,12 @@ function getCookie(name) {
     return cookieValue;
 }
 
+// Map backend types to user-friendly UI labels
+const typeLabels = {
+    servicii: "Services",
+    obiecte: "Objects",
+};
+
 export default function FavoritePulses() {
     // Original Data State
     const [pulses, setPulses] = useState([]);
@@ -89,8 +95,6 @@ export default function FavoritePulses() {
                     setCarouselIndex(0);
                 } else {
                     console.error("Failed fetching favorites", data);
-                    // optionally clear pulses on failure:
-                    // setPulses([]);
                 }
             } catch (err) {
                 console.error("Error loading favorites", err);
@@ -137,9 +141,6 @@ export default function FavoritePulses() {
     // processedPulses now comes directly from backend results (no client-side filtering)
     const processedPulses = pulses;
 
-    // Extract unique types from loaded pulses for the dropdown (may reflect current page)
-    const availableTypes = [...new Set(pulses.map((p) => p.type))];
-
     // Carousel controls (walk within processedPulses — i.e. the currently displayed server results)
     const openCarousel = (index) => {
         setCarouselIndex(index);
@@ -160,9 +161,8 @@ export default function FavoritePulses() {
         if (carouselIndex < processedPulses.length - 1) {
             setCarouselIndex((i) => i + 1);
         } else if (carouselIndex === processedPulses.length - 1 && hasNext) {
-            // optional: fetch next page and jump — simple approach: fetch next page and open first item
-            const nextPage = page + 1;
             // fetch next page, append? for simplicity replace pulses with next page and open first item
+            const nextPage = page + 1;
             fetchFavorites(nextPage, search, typeFilter, sortFilter).then(() => {
                 setCarouselIndex(0);
             });
@@ -185,244 +185,238 @@ export default function FavoritePulses() {
     return (
         <div className={styles.body}>
             <div className={styles.firstContainer}>
-            <Navbar />
-            <div className={styles.mainContainer}>
-                {/* Hero Header */}
-                <div className={styles.heroSection}>
-                    <h1 className={styles.title}>
-                        <span className={styles.gradientText}>Your Collection</span>
-                    </h1>
-                    <p className={styles.subtitle}>
-                        Filter and explore your loaded favorites. Showing up to {PER_PAGE} per page.
-                    </p>
-                </div>
-
-                {/* Glassmorphism Filter Bar */}
-                <div className={styles.filterContainer}>
-                    <div className={styles.searchBox}>
-                        <span className={styles.icon}>🔍</span>
-                        <input
-                            type="text"
-                            placeholder="Search server-side favorites..."
-                            value={search}
-                            onChange={(e) => {
-                                setSearch(e.target.value);
-                                // page reset happens in debounce effect
-                            }}
-                            className={styles.searchInput}
-                        />
+                <Navbar />
+                <div className={styles.mainContainer}>
+                    {/* Hero Header */}
+                    <div className={styles.heroSection}>
+                        <h1 className={styles.title}>
+                            <span className={styles.gradientText}>Your Collection</span>
+                        </h1>
+                        <p className={styles.subtitle}>
+                            Filter and explore your loaded favorites. Showing up to {PER_PAGE} per page.
+                        </p>
                     </div>
 
-                    <div className={styles.dropdowns}>
-                        <select
-                            className={styles.selectBox}
-                            value={typeFilter}
-                            onChange={(e) => {
-                                setTypeFilter(e.target.value);
-                                // page reset happens in debounce effect
-                            }}
-                        >
-                            <option value="all">All Types</option>
-                            {availableTypes.map((type) => (
-                                <option key={type} value={type}>
-                                    {type}
-                                </option>
-                            ))}
-                        </select>
+                    {/* Glassmorphism Filter Bar */}
+                    <div className={styles.filterContainer}>
+                        <div className={styles.searchBox}>
+                            <span className={styles.icon}>🔍</span>
+                            <input
+                                type="text"
+                                placeholder="Search server-side favorites..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className={styles.searchInput}
+                            />
+                        </div>
 
-                        <select
-                            className={styles.selectBox}
-                            value={sortFilter}
-                            onChange={(e) => {
-                                setSortFilter(e.target.value);
-                                // page reset happens in debounce effect
-                            }}
-                        >
-                            <option value="recent">Loaded Order</option>
-                            <option value="price_asc">Price: Low to High</option>
-                            <option value="price_desc">Price: High to Low</option>
-                        </select>
+                        <div className={styles.dropdowns}>
+                            <select
+                                className={styles.selectBox}
+                                value={typeFilter}
+                                onChange={(e) => setTypeFilter(e.target.value)}
+                            >
+                                <option value="all">All Types</option>
+                                {/* Hardcoded fixed filter values */}
+                                <option value="servicii">Services</option>
+                                <option value="obiecte">Objects</option>
+                            </select>
+
+                            <select
+                                className={styles.selectBox}
+                                value={sortFilter}
+                                onChange={(e) => setSortFilter(e.target.value)}
+                            >
+                                <option value="recent">Loaded Order</option>
+                                <option value="price_asc">Price: Low to High</option>
+                                <option value="price_desc">Price: High to Low</option>
+                            </select>
+                        </div>
                     </div>
-                </div>
 
-                {/* Content Grid */}
-                {loading && pulses.length === 0 ? (
-                    <Loading />
-                ) : (
-                    <>
-                        {processedPulses.length === 0 ? (
-                            <div className={styles.emptyState}>
-                                <h2>No matches found</h2>
-                                <p>Try adjusting your filters or navigate pages.</p>
+                    {/* Content Grid */}
+                    {loading && pulses.length === 0 ? (
+                        <Loading />
+                    ) : (
+                        <>
+                            {processedPulses.length === 0 ? (
+                                <div className={styles.emptyState}>
+                                    <h2>No matches found</h2>
+                                    <p>Try adjusting your filters or navigate pages.</p>
+                                </div>
+                            ) : (
+                                <div className={styles.grid}>
+                                    {processedPulses.map((pulse, idx) => (
+                                        <div
+                                            key={pulse.id}
+                                            className={styles.card}
+                                            onClick={() => openCarousel(idx)}
+                                        >
+                                            <div className={styles.imageWrapper}>
+                                                {pulse.image ? (
+                                                    <img src={pulse.image} alt="pulse" className={styles.image} />
+                                                ) : (
+                                                    <div className={styles.imagePlaceholder}>No Preview</div>
+                                                )}
+                                                <div
+                                                    className={styles.favoriteBadge}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                    }}
+                                                >
+                                                    ❤️
+                                                </div>
+                                            </div>
+
+                                            <div className={styles.cardBody}>
+                                                {/* Use label mapping for the visual tag */}
+                                                <span className={styles.typeTag}>
+                                                    {typeLabels[pulse.type] || pulse.type}
+                                                </span>
+                                                <h3 className={styles.name}>{pulse.name}</h3>
+
+                                                <div className={styles.cardFooter}>
+                                                    <div className={styles.priceTag}>
+                                                        {pulse.price} <span className={styles.currency}>{pulse.currency}</span>
+                                                    </div>
+                                                    <div className={styles.userInfo}>
+                                                        {pulse.user_avatar && (
+                                                            <img src={pulse.user_avatar} alt="avatar" className={styles.avatar} />
+                                                        )}
+                                                        <small className={styles.username}>@{pulse.user}</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Page navigation (server-side paging) */}
+                            <div className={styles.paginationBar}>
+                                <button
+                                    className={styles.pageBtn}
+                                    onClick={handlePrevPage}
+                                    disabled={page <= 1 || loading}
+                                >
+                                    ← Previous Page
+                                </button>
+
+                                <div className={styles.pageInfo}>
+                                    Page {page} {loading ? " (loading...)" : ""}
+                                </div>
+
+                                <button
+                                    className={styles.pageBtn}
+                                    onClick={handleNextPage}
+                                    disabled={!hasNext || loading}
+                                >
+                                    Next Page →
+                                </button>
                             </div>
-                        ) : (
-                            <div className={styles.grid}>
-                                {processedPulses.map((pulse, idx) => (
-                                    <div
-                                        key={pulse.id}
-                                        className={styles.card}
-                                        onClick={() => openCarousel(idx)}
+
+                            {/* Load Next Page (optional) */}
+                            {hasNext && (
+                                <div className={styles.loadMoreWrapper}>
+                                    <button
+                                        onClick={() => fetchFavorites(page + 1, search, typeFilter, sortFilter)}
+                                        className={styles.loadMoreBtn}
+                                        disabled={loading}
                                     >
-                                        <div className={styles.imageWrapper}>
-                                            {pulse.image ? (
-                                                <img src={pulse.image} alt="pulse" className={styles.image} />
+                                        {loading ? "Loading..." : "Load Next Page"}
+                                    </button>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+
+                {/* Carousel Modal */}
+                {carouselOpen && (
+                    <div className={styles.carouselOverlay} onClick={closeCarousel}>
+                        <div
+                            className={styles.carouselContent}
+                            onClick={(e) => e.stopPropagation()} // prevent closing when clicking inside
+                        >
+                            <button
+                                className={`${styles.carouselNav} ${carouselIndex === 0 ? styles.disabled : ""}`}
+                                onClick={prevCarousel}
+                                disabled={carouselIndex === 0}
+                            >
+                                ◀
+                            </button>
+
+                            <div className={styles.carouselCard}>
+                                {/* display the currently selected pulse from processedPulses */}
+                                {processedPulses[carouselIndex] ? (
+                                    <>
+                                        <div className={styles.carouselImageWrapper}>
+                                            {processedPulses[carouselIndex].image ? (
+                                                <img
+                                                    src={processedPulses[carouselIndex].image}
+                                                    alt="pulse"
+                                                    className={styles.carouselImage}
+                                                />
                                             ) : (
                                                 <div className={styles.noImage}>No Image</div>
                                             )}
-                                            <div
-                                                className={styles.favoriteBadge}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                }}
-                                            >
-                                                ❤️
+                                        </div>
+
+                                        <div className={styles.carouselBody}>
+                                            <h2>{processedPulses[carouselIndex].name}</h2>
+                                            <p className={styles.carouselMeta}>
+                                                {/* Use label mapping for carousel type output */}
+                                                <strong>Type:</strong> {typeLabels[processedPulses[carouselIndex].type] || processedPulses[carouselIndex].type} •{" "}
+                                                <strong>Price:</strong> {processedPulses[carouselIndex].price}{" "}
+                                                {processedPulses[carouselIndex].currency}
+                                            </p>
+                                            <p className={styles.carouselUser}>
+                                                {processedPulses[carouselIndex].user_avatar && (
+                                                    <img
+                                                        src={processedPulses[carouselIndex].user_avatar}
+                                                        alt="avatar"
+                                                        className={styles.avatar}
+                                                    />
+                                                )}
+                                                <small>@{processedPulses[carouselIndex].user}</small>
+                                            </p>
+
+                                            <div className={styles.carouselActions}>
+                                                <button
+                                                    className={styles.detailsBtn}
+                                                    // Note: Kept original type for backend routing requirements
+                                                    onClick={() =>
+                                                        navigate(
+                                                            `/pulse/${processedPulses[carouselIndex].type}/${processedPulses[carouselIndex].id}`
+                                                        )
+                                                    }
+                                                >
+                                                    View Details
+                                                </button>
+
+                                                <button className={styles.closeBtn} onClick={closeCarousel}>
+                                                    Close
+                                                </button>
                                             </div>
                                         </div>
-
-                                        <div className={styles.cardBody}>
-                                            <span className={styles.typeTag}>{pulse.type}</span>
-                                            <h3 className={styles.name}>{pulse.name}</h3>
-
-                                            <div className={styles.cardFooter}>
-                                                <div className={styles.priceTag}>
-                                                    {pulse.price} <span className={styles.currency}>{pulse.currency}</span>
-                                                </div>
-                                                <div className={styles.userInfo}>
-                                                    {pulse.user_avatar && (
-                                                        <img src={pulse.user_avatar} alt="avatar" className={styles.avatar} />
-                                                    )}
-                                                    <small className={styles.username}>@{pulse.user}</small>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Page navigation (server-side paging) */}
-                        <div className={styles.paginationBar}>
-                            <button
-                                className={styles.pageBtn}
-                                onClick={handlePrevPage}
-                                disabled={page <= 1 || loading}
-                            >
-                                ← Previous Page
-                            </button>
-
-                            <div className={styles.pageInfo}>
-                                Page {page} {loading ? " (loading...)" : ""}
+                                    </>
+                                ) : (
+                                    <div>Item not found</div>
+                                )}
                             </div>
 
                             <button
-                                className={styles.pageBtn}
-                                onClick={handleNextPage}
-                                disabled={!hasNext || loading}
+                                className={`${styles.carouselNav} ${
+                                    carouselIndex === processedPulses.length - 1 ? styles.disabled : ""
+                                }`}
+                                onClick={nextCarousel}
+                                disabled={carouselIndex === processedPulses.length - 1 && !hasNext}
                             >
-                                Next Page →
+                                ▶
                             </button>
                         </div>
-
-                        {/* Load Next Page (optional) */}
-                        {hasNext && (
-                            <div className={styles.loadMoreWrapper}>
-                                <button
-                                    onClick={() => fetchFavorites(page + 1, search, typeFilter, sortFilter)}
-                                    className={styles.loadMoreBtn}
-                                    disabled={loading}
-                                >
-                                    {loading ? "Loading..." : "Load Next Page"}
-                                </button>
-                            </div>
-                        )}
-                    </>
-                )}
-            </div>
-
-            {/* Carousel Modal */}
-            {carouselOpen && (
-                <div className={styles.carouselOverlay} onClick={closeCarousel}>
-                    <div
-                        className={styles.carouselContent}
-                        onClick={(e) => e.stopPropagation()} // prevent closing when clicking inside
-                    >
-                        <button
-                            className={`${styles.carouselNav} ${carouselIndex === 0 ? styles.disabled : ""}`}
-                            onClick={prevCarousel}
-                            disabled={carouselIndex === 0}
-                        >
-                            ◀
-                        </button>
-
-                        <div className={styles.carouselCard}>
-                            {/* display the currently selected pulse from processedPulses */}
-                            {processedPulses[carouselIndex] ? (
-                                <>
-                                    <div className={styles.carouselImageWrapper}>
-                                        {processedPulses[carouselIndex].image ? (
-                                            <img
-                                                src={processedPulses[carouselIndex].image}
-                                                alt="pulse"
-                                                className={styles.carouselImage}
-                                            />
-                                        ) : (
-                                            <div className={styles.noImage}>No Image</div>
-                                        )}
-                                    </div>
-
-                                    <div className={styles.carouselBody}>
-                                        <h2>{processedPulses[carouselIndex].name}</h2>
-                                        <p className={styles.carouselMeta}>
-                                            <strong>Type:</strong> {processedPulses[carouselIndex].type} •{" "}
-                                            <strong>Price:</strong> {processedPulses[carouselIndex].price}{" "}
-                                            {processedPulses[carouselIndex].currency}
-                                        </p>
-                                        <p className={styles.carouselUser}>
-                                            {processedPulses[carouselIndex].user_avatar && (
-                                                <img
-                                                    src={processedPulses[carouselIndex].user_avatar}
-                                                    alt="avatar"
-                                                    className={styles.avatar}
-                                                />
-                                            )}
-                                            <small>@{processedPulses[carouselIndex].user}</small>
-                                        </p>
-
-                                        <div className={styles.carouselActions}>
-                                            <button
-                                                className={styles.detailsBtn}
-                                                onClick={() =>
-                                                    navigate(
-                                                        `/pulse/${processedPulses[carouselIndex].type}/${processedPulses[carouselIndex].id}`
-                                                    )
-                                                }
-                                            >
-                                                View Details
-                                            </button>
-
-                                            <button className={styles.closeBtn} onClick={closeCarousel}>
-                                                Close
-                                            </button>
-                                        </div>
-                                    </div>
-                                </>
-                            ) : (
-                                <div>Item not found</div>
-                            )}
-                        </div>
-
-                        <button
-                            className={`${styles.carouselNav} ${
-                                carouselIndex === processedPulses.length - 1 ? styles.disabled : ""
-                            }`}
-                            onClick={nextCarousel}
-                            disabled={carouselIndex === processedPulses.length - 1 && !hasNext}
-                        >
-                            ▶
-                        </button>
                     </div>
-                </div>
-            )}
+                )}
             </div>
             <Footer />
         </div>
