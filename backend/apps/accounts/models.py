@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser, PermissionsMixin
 from django.contrib.gis.db import models
@@ -815,3 +816,29 @@ class RequestComment(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.pub_date}"
+
+
+class Contact(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,  # Mai sigur decât string-ul "User"
+        on_delete=models.CASCADE,
+        related_name="contacts"
+    )
+
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+
+    email = models.EmailField(max_length=150)
+    phone_number = models.CharField(max_length=20, blank=True, null=True)
+
+    complaint_message = models.TextField(max_length=500)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Contact Message"
+        verbose_name_plural = "Contact Messages"
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} - {self.created_at.strftime('%d-%m-%Y')}"

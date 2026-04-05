@@ -1763,7 +1763,7 @@ export default function Profile() {
                                                         <div className="flex">
                                                             <CalendarDays color={"#475064"} />
                                                             <p className={styles.pulseDate}>
-                                                                Postat:{" "}
+                                                                Posted:{" "}
                                                                 {pulse.timestamp
                                                                     ? new Date(pulse.timestamp.replace(" ", "T") + "Z").toLocaleString("ro-RO", {
                                                                         day: "2-digit",
@@ -1898,7 +1898,7 @@ export default function Profile() {
                                                         <div className="flex">
                                                             <CalendarDays color={"#475064"} />
                                                             <p className={styles.pulseDate}>
-                                                                Requested:{" "}
+                                                                Requested at:{" "}
                                                                 {request.timestamp
                                                                     ? new Date(request.timestamp.replace(" ", "T") + "Z").toLocaleString("ro-RO", {
                                                                         day: "2-digit",

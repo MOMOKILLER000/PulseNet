@@ -1,9 +1,10 @@
 import React, { Suspense, useEffect, useState } from 'react';
-import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
+import {Routes, Route, useLocation, useNavigate, Navigate, Outlet} from 'react-router-dom';
 import { toast, Toaster } from 'react-hot-toast';
 import Loading from './components/Loading';
 import FavoritePulses from "./pages/User_pages/FavoritePulses";
 import './App.css';
+import ScrollToTop from "@/components/ScrollToTop";
 
 // Lazy loaded pages
 const Index = React.lazy(() => import('./pages/Pulses_pages/Index'));
@@ -27,6 +28,7 @@ const Admin = React.lazy(()=> import('./pages/Admin.jsx'));
 const RequestDetails = React.lazy(()=> import('./pages/Requests/RequestDetails.jsx'));
 const Pulses = React.lazy(()=> import('./pages/Pulses_pages/Pulses.jsx'));
 const RequestOffer = React.lazy(() => import('./pages/Requests/RequestOffer'));
+const Contact = React.lazy(() => import('./pages/User_pages/Contact.jsx'));
 const NotificationHandler = ({ currentUser }) => {
     const location = useLocation();
     const navigate = useNavigate();
@@ -336,33 +338,36 @@ function App() {
             {user && <NotificationHandler currentUser={user} />}
 
             <Suspense fallback={<Loading />}>
+                <ScrollToTop />
                 <Routes>
-                    <Route path="/" element={<Index user={user} />} />
-                    <Route path="/signup" element={<SignUp />} />
                     <Route path="/login" element={<Login onLoginSuccess={fetchUser} />} />
+                    <Route path="/signup" element={<SignUp />} />
 
-                    {/* Protected Routes */}
-                    <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                    <Route path="/search-users" element={<ProtectedRoute><SearchUsers /></ProtectedRoute>} />
-                    <Route path="/follow-requests" element={<ProtectedRoute><FollowRequests /></ProtectedRoute>} />
-                    <Route path="/user-profile/:id" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
-                    <Route path="/direct-chat/:id" element={<ProtectedRoute><DirectChat currentUser={user} /></ProtectedRoute>} />
+                    <Route element={user ? <Outlet /> : <Navigate to="/login" replace />}>
+                        <Route path="/" element={<Index user={user} />} />
+                        <Route path="/profile" element={<Profile />} />
+                        <Route path="/search-users" element={<SearchUsers />} />
+                        <Route path="/follow-requests" element={<FollowRequests />} />
+                        <Route path="/user-profile/:id" element={<UserProfile />} />
+                        <Route path="/direct-chat/:id" element={<DirectChat currentUser={user} />} />
+                        <Route path="/add-pulse" element={<AddPulses />} />
+                        <Route path="/pulses" element={<Pulses />} />
+                        <Route path="pulse/:type/:id" element={<PulseDetails />} />
+                        <Route path="/transaction/:pulseId" element={<PulseTransaction />} />
+                        <Route path="/messages" element={<Messages currentUser={user} />} />
+                        <Route path="/favorites" element={<FavoritePulses />} />
+                        <Route path="/alerts" element={<Alerts />} />
+                        <Route path="/add-alerts" element={<AddAlerts />} />
+                        <Route path="/alert/:id" element={<AlertPage />} />
+                        <Route path="/contact" element={<Contact />} />
+                        <Route path="/urgent-requests" element={<UrgentRequests />} />
+                        <Route path="/create-request" element={<CreateRequest />} />
+                        <Route path="/request/:id" element={<RequestDetails />} />
+                        <Route path="/offer/:requestId" element={<RequestOffer />} />
 
-                    {/* I noticed some routes below aren't protected. You might want to wrap them in `user ? ... : <Navigate to="/login" />` if they require auth! */}
-                    <Route path="/add-pulse" element={<ProtectedRoute><AddPulses/></ProtectedRoute>} />
-                    <Route path="/pulses" element={<Pulses />} />
-                    <Route path="pulse/:type/:id" element={<PulseDetails />} />
-                    <Route path="/transaction/:pulseId" element={<ProtectedRoute><PulseTransaction /></ProtectedRoute>} />
-                    <Route path="/messages" element={<ProtectedRoute><Messages currentUser={user} /></ProtectedRoute>} />
-                    <Route path="/favorites" element={<ProtectedRoute><FavoritePulses /></ProtectedRoute>} />
-                    <Route path="/alerts" element={<Alerts />} />
-                    <Route path="/add-alerts" element={<ProtectedRoute><AddAlerts /></ProtectedRoute>} />
-                    <Route path="/alert/:id" element={<AlertPage />} />
-                    <Route path="/admin-page" element={<AdminRoute><Admin /></AdminRoute>} />
-                    <Route path="/urgent-requests" element={<UrgentRequests />} />
-                    <Route path="/create-request" element={<ProtectedRoute><CreateRequest /></ProtectedRoute>} />
-                    <Route path="/request/:id" element={<ProtectedRoute><RequestDetails /></ProtectedRoute>} />
-                    <Route path="/offer/:requestId" element={<ProtectedRoute><RequestOffer /></ProtectedRoute>} />
+                        <Route path="/admin-page" element={<AdminRoute><Admin /></AdminRoute>} />
+                    </Route>
+
                     <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
             </Suspense>
