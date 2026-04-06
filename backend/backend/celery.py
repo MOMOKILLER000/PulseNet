@@ -29,15 +29,18 @@ app.conf.beat_schedule = {
         "schedule": crontab(minute=0),
     },
 
-    "bulk-update-user-embeddings-daily": {
-        "task": "apps.accounts.tasks.bulk_update_all_user_embeddings",
-        "schedule": crontab(hour=2, minute=0),
-    },
-
-    "check-weather-alerts-30-min": {
+"check-weather-alerts-30-min": {
         "task": "apps.accounts.tasks.fetch_severe_weather_alerts",
         "schedule": crontab(minute="*/30"),
-    }
+    },
+    "delete-old-request-offers-daily": {
+        "task": "apps.accounts.tasks.delete_old_request_offers",
+        "schedule": crontab(minute=0, hour=1),  # daily at 1am
+    },
+    "delete-old-pulse-rentals-daily": {
+        "task": "apps.accounts.tasks.delete_old_pulse_rentals",
+        "schedule": crontab(minute=0, hour=1),  # daily at 1am
+    },
 }
 
 

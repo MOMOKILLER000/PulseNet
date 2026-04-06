@@ -78,7 +78,7 @@
 }
 
 .headerLayout {
-    @apply flex flex-col sm:flex-row gap-4 md:gap-8 items-start;
+    @apply flex flex-col sm:flex-row gap-4 md:gap-8 items-start flex-wrap;
 }
 
 /* ============================================================
@@ -526,6 +526,38 @@
 .editTextarea:focus { border-color: var(--color-indigo); box-shadow: 0 0 0 2px var(--color-indigo-border); }
 
 .editActions { @apply flex flex-wrap gap-3 mt-8 pt-4; border-top: 1px solid var(--color-border); }
+
+.controlsRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.rangeSection {
+    flex: 1;
+    min-width: 0;
+}
+
+.checkboxSection {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+    margin-top: 12px;
+}
+
+.checkboxLabel {
+    font-size: 0.9rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.checkboxInput {
+    cursor: pointer;
+
+}
 
 .saveButton {
     @apply flex px-6 py-2.5 rounded-full font-bold shadow-sm;

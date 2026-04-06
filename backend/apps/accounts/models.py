@@ -55,6 +55,8 @@ class User(AbstractUser):
 
     banned_until = models.DateTimeField(null=True, blank=True)
 
+    is_private = models.BooleanField(default=True)
+
     public_key = models.TextField(blank=True, null=True)
 
     # Add this helper property near your is_quiet_now function

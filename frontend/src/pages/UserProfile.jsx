@@ -17,9 +17,8 @@ import {
     Boxes,
     BriefcaseBusiness,
     Handshake,
-    Repeat, Undo, Save
+    Repeat, Undo, Save, MapPin, Zap
 } from 'lucide-react';
-import {Circle, MapContainer, Marker, TileLayer} from "react-leaflet";
 import Footer from "@/components/Footer";
 
 function getCookie(name) {
@@ -78,7 +77,7 @@ export default function Profile() {
                 console.error("Error fetching profile:", error);
                 setLoading(false);
             });
-    }, []);
+    }, [id]);
 
     const isUserSleeping = () => {
         if (!user?.quiet_hours_start || !user?.quiet_hours_end) return false;
@@ -161,6 +160,21 @@ export default function Profile() {
     const handlePrev = () => {
         if (currentIndex - itemsPerPage >= 0) {
             setCurrentIndex(prev => prev - itemsPerPage);
+        }
+    };
+
+    const [requestsCurrentIndex, setRequestsCurrentIndex] = useState(0);
+    const requests = user?.requests || [];
+    const currentRequests = requests.slice(requestsCurrentIndex, requestsCurrentIndex + itemsPerPage);
+
+    const handleRequestsNext = () => {
+        if (requestsCurrentIndex + itemsPerPage < requests.length) {
+            setRequestsCurrentIndex(prev => prev + itemsPerPage);
+        }
+    };
+    const handleRequestsPrev = () => {
+        if (requestsCurrentIndex - itemsPerPage >= 0) {
+            setRequestsCurrentIndex(prev => prev - itemsPerPage);
         }
     };
 
@@ -328,16 +342,27 @@ export default function Profile() {
                                         </div>
                                         <div className={styles.objectInfo}>
                                             <h3 className={styles.objectName}>{pulse.title}</h3>
+
+                                            {pulse.address && (
+                                                <p className={styles.pulsePhone}>
+                                                    <MapPin size={16} color={'black'} style={{marginTop: '2px', marginRight: '5px'}}/>
+                                                    {pulse.address}
+                                                </p>
+                                            )}
+
                                             {pulse.phone_number && (
                                                 <p className={styles.pulsePhone}>
                                                     <Phone size={16} color={'black'} style={{marginTop: '2px', marginRight: '5px'}}/>
                                                     {pulse.phone_number}
                                                 </p>
                                             )}
+
+
+
                                             <div className='flex'>
                                                 <CalendarDays color={'black'}/>
                                                 <p className={styles.pulseDate}>
-                                                    Postat:{" "}
+                                                    Posted at:{" "}
                                                     {pulse.timestamp ? new Date(pulse.timestamp.replace(" ", "T") + "Z").toLocaleString("ro-RO", {
                                                         day: "2-digit",
                                                         month: "2-digit",
@@ -346,7 +371,11 @@ export default function Profile() {
                                                         minute: "2-digit",
                                                     }) : "—"}
                                                 </p>
+
                                             </div>
+
+
+
                                             <div className='flex'>
                                                 <DollarSign color={'green'}/>
                                                 {pulse.price != null && (
@@ -371,8 +400,8 @@ export default function Profile() {
                                     </motion.button>
 
                                     <span className={styles.carouselIndicator}>
-                    {Math.floor(currentIndex / itemsPerPage) + 1} / {Math.ceil(filteredPulses.length / itemsPerPage)}
-                </span>
+                                        {Math.floor(currentIndex / itemsPerPage) + 1} / {Math.ceil(filteredPulses.length / itemsPerPage)}
+                                    </span>
 
                                     <motion.button {...btnMotion}
                                                    onClick={handleNext}
@@ -386,6 +415,104 @@ export default function Profile() {
                         </motion.div>
                     </motion.div>
 
+                    <motion.div className={styles.contentArea}>
+                        <motion.div
+                            className={styles.card}
+                            whileHover={{ y: -2, boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            <div className={styles.pulsesHeader}>
+                                <h2 className={styles.sectionTitle}>User's requests</h2>
+                            </div>
+
+                            {/* Requests list */}
+                            <div className={styles.objectGrid}>
+                                {requests.length === 0 && (
+                                    <p className={styles.emptyState}>No requests yet.</p>
+                                )}
+
+                                {currentRequests.map((req) => (
+                                    <motion.div
+                                        key={req.id}
+                                        className={styles.objectCard}
+                                        onClick={() => navigate(`/request/${req.id}`)}
+                                        initial={{ opacity: 0, y: 16 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.3 }}
+                                        whileHover={{ y: -3, cursor: "pointer", boxShadow: "0 8px 24px rgba(0,0,0,0.1)" }}
+                                    >
+                                        <div className={styles.objectImage}>
+                                            {req.images && req.images.length > 0 ? (
+                                                <img src={req.images[0]} alt={req.title} className={styles.pulseImage} />
+                                            ) : (
+                                                <span className={styles.imagePlaceholder}>
+                                                    <Zap size={80} color={'black'}/>
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className={styles.objectInfo}>
+                                            <h3 className={styles.objectName}>{req.title}</h3>
+
+                                            {req.address && (
+                                                <p className={styles.pulsePhone}>
+                                                    <MapPin size={16} color={'black'} style={{marginTop: '2px', marginRight: '5px'}}/>
+                                                    {req.address}
+                                                </p>
+                                            )}
+
+                                            <div className='flex'>
+                                                <CalendarDays color={'black'}/>
+                                                <p className={styles.pulseDate}>
+                                                    Posted:{" "}
+                                                    {req.timestamp ? new Date(req.timestamp.replace(" ", "T") + "Z").toLocaleString("ro-RO", {
+                                                        day: "2-digit",
+                                                        month: "2-digit",
+                                                        year: "numeric",
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                    }) : "—"}
+                                                </p>
+                                            </div>
+
+                                            <div className='flex'>
+                                                <DollarSign color={'green'}/>
+                                                {req.max_price != null && (
+                                                    <span className="font-bold">
+                                    Max: {req.max_price} {req.currencyType || "lei"}
+                                </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+
+                            {/* Carousel Controls */}
+                            {requests.length > itemsPerPage && (
+                                <div className={styles.carouselControls}>
+                                    <motion.button {...btnMotion}
+                                                   onClick={handlePrev}
+                                                   disabled={currentIndex === 0}
+                                                   className={styles.carouselBtn}
+                                    >
+                                        &larr; Prev
+                                    </motion.button>
+
+                                    <span className={styles.carouselIndicator}>
+                    {Math.floor(currentIndex / itemsPerPage) + 1} / {Math.ceil(requests.length / itemsPerPage)}
+                </span>
+
+                                    <motion.button {...btnMotion}
+                                                   onClick={handleNext}
+                                                   disabled={currentIndex + itemsPerPage >= requests.length}
+                                                   className={styles.carouselBtn}
+                                    >
+                                        Next &rarr;
+                                    </motion.button>
+                                </div>
+                            )}
+                        </motion.div>
+                    </motion.div>
             </div>
         </div>
             <Footer />
