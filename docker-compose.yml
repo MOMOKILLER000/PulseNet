@@ -5,6 +5,7 @@ services:
     build: ./backend
     image: pulsenet_backend  # ✅ build once, reuse
     container_name: django_backend
+    restart: unless-stopped
     command: daphne -b 0.0.0.0 -p 8000 backend.asgi:application
     env_file:
       - ./backend/.env
@@ -28,7 +29,8 @@ services:
   celery_worker:
     image: pulsenet_backend  # ✅ reuse image
     container_name: celery_worker
-    command: celery -A backend worker --loglevel=info
+    restart: unless-stopped
+    command: celery -A backend worker --loglevel=info --concurrency=2 --max-tasks-per-child=50
     env_file:
       - ./backend/.env
     environment:
@@ -47,6 +49,7 @@ services:
   celery_beat:
     image: pulsenet_backend  # ✅ reuse image
     container_name: celery_beat
+    restart: unless-stopped
     command: celery -A backend beat --loglevel=info
     env_file:
       - ./backend/.env

@@ -14,7 +14,7 @@ from kombu.transport.sqlalchemy import metadata
 from sentence_transformers import SentenceTransformer
 
 # Import your models and logic
-from .models import Alert, UrgentRequest, User, Notification, Pulse
+from .models import Alert, UrgentRequest, User, Notification, Pulse, UrgentRequestOffer, PulseRental
 from .utils import find_heroes_for_urgent_requests, process_pet_image_and_find_matches, calculate_trust_score
 from django.apps import apps
 # Lazy loader for the model to keep worker memory clean
@@ -55,6 +55,20 @@ def delete_old_alerts():
     deleted_count, _ = expired_alerts.delete()
     return f"Deactivated {deactivated_count} weather alerts (older than 24h). Deleted {deleted_count} alerts (older than 20 days)."
 
+@shared_task(name="apps.accounts.tasks.delete_old_request_offers")
+def delete_old_request_offers():
+    cutoff = timezone.now() - timedelta(days=10)
+    old_offers = UrgentRequestOffer.objects.filter(created_at__lte=cutoff)
+    count, _ = old_offers.delete()
+    return f"Deleted {count} request offers older than 10 days"
+
+@shared_task(name="apps.accounts.tasks.delete_old_pulse_rentals")
+def delete_old_pulse_rentals():
+    cutoff = timezone.now() - timedelta(days=7)
+    old_rentals = PulseRental.objects.filter(end_date__lte=cutoff)
+    count, _ = old_rentals.delete()
+    return f"Deleted {count} pulse rentals ended more than 7 days ago"
+
 # --- HERO SEARCH TASKS ---
 
 @shared_task(name="apps.accounts.tasks.run_hero_search_task")
@@ -85,12 +99,6 @@ def update_user_embedding(user_id):
     except User.DoesNotExist:
         pass
 
-@shared_task(name="apps.accounts.tasks.bulk_update_all_user_embeddings")
-def bulk_update_all_user_embeddings():
-    """Scheduled task to refresh every user's embedding."""
-    users = User.objects.all()
-    for user in users:
-        update_user_embedding.delay(user.id)
 
 @shared_task(name="alerts.process_pet_match")
 def process_pet_match_task(alert_id):
@@ -115,12 +123,12 @@ def process_pet_match_task(alert_id):
             if alert.category == "found_pet" and match.category == "lost_pet":
                 recipient = match.user
                 target_id = alert.id
-                msg = f"Cineva a găsit un animal care seamănă cu cel pierdut de tine ({alert.title})!"
+                msg = f"Someone has found an animal which looks like yours ({alert.title})!"
 
             elif alert.category == "lost_pet" and match.category == "found_pet":
                 recipient = alert.user
                 target_id = match.id
-                msg = f"Există deja un anunț cu un animal găsit care seamănă cu al tău! Verifică-l aici."
+                msg = f"There is already a found animal post that looks like yours! Check it out here."
 
             if recipient:
                 notification = Notification.objects.create(

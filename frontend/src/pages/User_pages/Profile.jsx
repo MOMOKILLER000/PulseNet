@@ -137,6 +137,7 @@ export default function Profile() {
         lat: null,
         lng: null,
         skills: [],
+        is_private: true,
     });
 
     const [deletePulseModal, setDeletePulseModal] = useState({
@@ -386,7 +387,7 @@ export default function Profile() {
                 // Fetch rental offers (as owner)
                 const offersRes = await fetch("http://localhost:8000/accounts/pulse_rentals/", {
                     method: "GET",
-                    credentials: "include", // ✅ send session cookies
+                    credentials: "include",
                     headers: {
                         "Content-Type": "application/json",
                         "X-CSRFToken": getCookie("csrftoken"),
@@ -1434,6 +1435,7 @@ export default function Profile() {
                                                     lat: user.location?.coordinates?.[1] ?? prev.lat,
                                                     lng: user.location?.coordinates?.[0] ?? prev.lng,
                                                     skills: user.skills || [],
+                                                    is_private: user.is_private ?? true,
                                                 }));
                                                 setEditMode(true);
                                                 navigator.geolocation?.getCurrentPosition((position) => {
@@ -1562,28 +1564,52 @@ export default function Profile() {
                                         </div>
 
                                         <div className={styles.inputGroup}>
-                                            <div className={styles.labelWrapper}>
-                                                <label htmlFor="visibility-range" className={styles.inputLabel}>
-                                                    Visibility Range
-                                                </label>
-                                                <span className={styles.rangeValue}>{editForm.visibility_radius} km</span>
-                                            </div>
-                                            <input
-                                                type="range"
-                                                id="visibility-range"
-                                                min="1"
-                                                max="10"
-                                                step="1"
-                                                value={editForm.visibility_radius}
-                                                className={styles.rangeInput}
-                                                onChange={(e) =>
-                                                    setEditForm((prev) => ({
-                                                        ...prev,
-                                                        visibility_radius: Number(e.target.value),
-                                                    }))
-                                                }
-                                            />
+                                            <div className={styles.controlsRow}>
 
+                                                {/* PARTEA STÂNGĂ: Range-ul tău existent */}
+                                                <div className={styles.rangeSection}>
+                                                    <div className={styles.labelWrapper}>
+                                                        <label htmlFor="visibility-range" className={styles.inputLabel}>
+                                                            Visibility Range
+                                                        </label>
+                                                        <span className={styles.rangeValue}>{editForm.visibility_radius} km</span>
+                                                    </div>
+                                                    <input
+                                                        type="range"
+                                                        id="visibility-range"
+                                                        min="1"
+                                                        max="10"
+                                                        step="1"
+                                                        value={editForm.visibility_radius}
+                                                        className={styles.rangeInput}
+                                                        onChange={(e) =>
+                                                            setEditForm((prev) => ({
+                                                                ...prev,
+                                                                visibility_radius: Number(e.target.value),
+                                                            }))
+                                                        }
+                                                    />
+                                                </div>
+
+                                                <div className={styles.checkboxSection}>
+                                                    <input
+                                                        type="checkbox"
+                                                        id="private-profile"
+                                                        className={styles.checkboxInput}
+                                                        checked={editForm.is_private}
+                                                        onChange={(e) =>
+                                                            setEditForm((prev) => ({
+                                                                ...prev,
+                                                                is_private: e.target.checked,
+                                                            }))
+                                                        }
+                                                    />
+                                                    <label htmlFor="private-profile" className={styles.checkboxLabel}>
+                                                        Private Profile
+                                                    </label>
+                                                </div>
+
+                                            </div>
                                             <div className={styles.mapContainer}>
                                                 <MapContainer
                                                     center={editForm.lat && editForm.lng ? [editForm.lat, editForm.lng] : [44.4268, 26.1025]}

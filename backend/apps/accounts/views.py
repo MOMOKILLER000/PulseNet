@@ -295,6 +295,7 @@ def profile(request):
             "trustLevel": user.trust_level,
             "isVerified": user.is_verified,
             "onlineStatus": user.online_status,
+            "is_private": user.is_private,
             "skills": user.skills if isinstance(user.skills, list) else [],
             "date_joined": user.date_joined,
             "totalPosts": total_posts,  # ← here you return the total number of posts
@@ -364,6 +365,7 @@ def update_profile(request):
         user.quiet_hours_start = data.get("quiet_hours_start") or None
         user.quiet_hours_end = data.get("quiet_hours_end") or None
         user.visibility_radius = data.get('visibility_radius', user.visibility_radius)
+        user.is_private = data.get('is_private', user.is_private)
         user.skills = data.get('skills', [])
         # 3. Validate and save
         user.save()
@@ -403,8 +405,9 @@ def update_profile(request):
                 "trustLevel": user.trust_level,
                 "isVerified": user.is_verified,
                 "onlineStatus": user.online_status,
+                "is_private": user.is_private,
                 "skills": user.skills or [],
-                "pulses": pulses_data, 
+                "pulses": pulses_data,
             }
         }, status=200)
 
@@ -1855,7 +1858,7 @@ def user_profile(request, user_id):
         ).exists()
 
         pulses = Pulse.objects.filter(user=user).prefetch_related('images')
-
+        requests = UrgentRequest.objects.filter(user=user).prefetch_related('images')
         pulses_data = [
             {
                 "id": p.id,
@@ -1866,9 +1869,24 @@ def user_profile(request, user_id):
                 "currencyType": p.currencyType,
                 "description": p.description,
                 "images": [request.build_absolute_uri(img.image.url) for img in p.images.all()],
+                "address": p.address,
                 "phone_number": p.phone_number,
                 "timestamp": p.created_at.strftime("%Y-%m-%d %H:%M"),
             } for p in pulses
+        ]
+
+        requests_data = [
+            {
+                "id": r.id,
+                "title": r.title,
+                "description": r.description,
+                "category": r.category,
+                "address": r.address,
+                "currencyType": r.currencyType,
+                "max_price": float(r.max_price),
+                "images": [request.build_absolute_uri(img.image.url) for img in r.images.all()],
+                "timestamp": r.created_at.strftime("%Y-%m-%d %H:%M"),
+            } for r in requests
         ]
 
         user_data = {
@@ -1902,6 +1920,7 @@ def user_profile(request, user_id):
             ).exists(),
             "is_friend": is_friend,
             "pulses": pulses_data,
+            "requests": requests_data,
         }
 
         return JsonResponse({"user": user_data})
