@@ -193,7 +193,7 @@ export default function FavoritePulses() {
                             <span className={styles.gradientText}>Your Collection</span>
                         </h1>
                         <p className={styles.subtitle}>
-                            Filter and explore your loaded favorites. Showing up to {PER_PAGE} per page.
+                            Filter and explore your loaded favorites.
                         </p>
                     </div>
 
@@ -203,7 +203,7 @@ export default function FavoritePulses() {
                             <span className={styles.icon}>🔍</span>
                             <input
                                 type="text"
-                                placeholder="Search server-side favorites..."
+                                placeholder="Search favorites..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 className={styles.searchInput}

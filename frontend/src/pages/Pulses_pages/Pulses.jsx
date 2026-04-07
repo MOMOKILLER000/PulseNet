@@ -78,10 +78,10 @@ export default function Pulses() {
     useEffect(() => {
         const delay = setTimeout(() => {
             fetchPulses(1);
-        }, 400);
+        }, 1000);
 
         return () => clearTimeout(delay);
-    }, [search, category, pulseType, minPrice, maxPrice]);
+    }, [search, category, pulseType]);
 
     const navigate = useNavigate();
     const fetchPulses = async (pageNumber = 1) => {

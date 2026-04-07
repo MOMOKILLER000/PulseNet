@@ -301,7 +301,7 @@ export default function RequestDetails() {
                                             ))}
                                         </div>
                                     </>
-                                ) : <div className={styles.noImage}>No images</div>}
+                                ) : <div className={styles.noImage}>No preview</div>}
                             </div>
 
                             {/* INFO GRID */}

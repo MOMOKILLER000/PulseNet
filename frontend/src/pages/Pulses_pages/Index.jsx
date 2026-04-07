@@ -151,8 +151,8 @@ export default function Index() {
     const [userLocation, setUserLocation] = useState(null);
     const [nearestPulses, setNearestPulses] = useState([]);
     const [urgentRequests, setUrgentRequests] = useState([]);
-    const [loadingPulses, setLoadingPulses] = useState(false);
-    const [loadingRequests, setLoadingRequests] = useState(false);
+    const [loadingPulses, setLoadingPulses] = useState(true);
+    const [loadingRequests, setLoadingRequests] = useState(true);
     const [locationError, setLocationError] = useState("");
     const [isSuperuser, setIsSuperuser] = useState(false);
 
@@ -580,6 +580,9 @@ export default function Index() {
             </div>
         );
     }
+
+    if (loadingPulses || loadingRequests)
+        return <Loading />
 
     return (
         <div className={styles.bodyContainer}>

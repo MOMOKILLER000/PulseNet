@@ -430,14 +430,14 @@ export default function PulseDetails() {
                                             ))}
                                         </div>
                                     </>
-                                ) : <div className={styles.noImage}>No images</div>}
+                                ) : <div className={styles.noImage}>No preview</div>}
                             </div>
 
                             {/* INFO GRID */}
                             <div className={styles.infoGrid}>
                                 <div><span>Posted</span><strong>{isoToLocalString(pulse.timestamp)}</strong></div>
                                 <div><span>Location</span><strong>{pulse.address || "Address not available"}</strong></div>
-                                <div><span>Condition</span><strong>{pulse.condition || "N/A"}</strong></div>
+                                <div><span>Rating</span><strong>{pulse.rating || "N/A"}/10</strong></div>
                             </div>
 
                             {/* --- RATING & COMMENT SECTION (1-10 Scale) --- */}

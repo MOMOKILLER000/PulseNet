@@ -10,6 +10,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import Footer from "@/components/Footer";
+import Loading from "@/components/Loading";
 
 function getLocationCoords(location) {
     // default coords (lon, lat)
@@ -375,7 +376,7 @@ export default function PulseTransaction() {
 
     const todayStr = new Date().toISOString().split("T")[0];
 
-    if (loading) return <div className={styles.loader}>Loading...</div>;
+    if (loading) return <Loading />;
     if (!pulse) return <div className={styles.loader}>Pulse not found</div>;
 
     const coords = getLocationCoords(pulse.location);

@@ -186,6 +186,41 @@
     transform: scale(1.02);
 }
 
+.noImage {
+    width: 100%;
+    height: 300px; /* SAME as .mainImage */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 16px;
+    background: #e9e6e6;
+    border: 2px dashed #00bfa5;
+
+    color: #20786e;
+    font-size: 1.2rem;
+    font-weight: 500;
+
+    position: relative;
+    overflow: hidden;
+}
+
+/* Optional subtle pattern */
+.noImage::after {
+    content: "";
+    position: absolute;
+    width: 120%;
+    height: 120%;
+    background: repeating-linear-gradient(
+            45deg,
+            transparent,
+            transparent 10px,
+            rgba(0, 191, 165, 0.05) 10px,
+            rgba(0, 191, 165, 0.05) 20px
+    );
+}
+
 /* Nav arrows */
 .navLeft,
 .navRight{

@@ -2,6 +2,7 @@ from channels.layers import get_channel_layer
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import authenticate
 from django.core.paginator import Paginator
+from django.db.models import Avg
 from django.middleware.csrf import get_token
 from django.utils.dateparse import parse_datetime, parse_date
 from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie, csrf_protect
@@ -127,7 +128,7 @@ def user_login(request):
                 }
                 return JsonResponse({'message': 'User login successful', 'user': user_data}, status=200)
             else:
-                return JsonResponse({'message': 'Invalid credentials or not a normal user'}, status=400)
+                return JsonResponse({'message': 'Invalid credentials'}, status=400)
 
         except json.JSONDecodeError:
             return JsonResponse({'message': 'Invalid JSON'}, status=400)
@@ -1076,7 +1077,7 @@ def get_pulse_by_id(request, pulse_id):
                 "status": rental.status,
                 "renter_id": getattr(rental, "renter_id", None),
             }
-            for rental in pulse.rentals.filter(status__in=["pending", "confirmed"])
+            for rental in pulse.rentals.filter(status__in=["confirmed"])
         ]
 
         try:
@@ -1085,6 +1086,12 @@ def get_pulse_by_id(request, pulse_id):
         except PulseRating.DoesNotExist:
             user_rating = None
 
+        avg_rating = PulseRating.objects.filter(pulse=pulse).aggregate(avg=Avg("rating"))["avg"]
+
+        if avg_rating is not None:
+            avg_rating = round(avg_rating, 1)  # optional rounding
+        else:
+            avg_rating = "N/A"
         # New field: does the current user have enough trust to view/interact with this pulse?
         has_trust_access = request.user.is_verified and request.user.trust_score > 200
 
@@ -1109,6 +1116,7 @@ def get_pulse_by_id(request, pulse_id):
             "reserved_periods": unavailable_ranges,
             "unavailable_ranges": unavailable_ranges,
             "has_trust_access": has_trust_access,  # <-- new field
+            "rating": avg_rating,
         }
 
         return JsonResponse({
@@ -2523,6 +2531,7 @@ def report_alert(request, alert_id):
 
         # Increase toxicity_score by 3, capped at 100
         alert.toxicity_score = min(alert.toxicity_score + 3, 100)
+        alert.report_count = alert.report_count + 1
 
         # Flag the alert if toxicity_score reaches 40 or more
         if alert.toxicity_score >= 40:
