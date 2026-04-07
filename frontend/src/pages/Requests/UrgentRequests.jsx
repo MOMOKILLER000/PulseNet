@@ -39,6 +39,10 @@ export default function UrgentRequests() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
+    const [searchInput, setSearchInput] = useState("");
+    const [minPriceInput, setMinPriceInput] = useState("");
+    const [maxPriceInput, setMaxPriceInput] = useState("");
+
     const [search, setSearch] = useState("");
     const [category, setCategory] = useState("");
     const [minPrice, setMinPrice] = useState("");
@@ -135,11 +139,7 @@ export default function UrgentRequests() {
     };
 
     useEffect(() => {
-        const delay = setTimeout(() => {
-            fetchRequests(1);
-        }, 400);
-
-        return () => clearTimeout(delay);
+        fetchRequests(1);
     }, [search, category, minPrice, maxPrice]);
 
     const handleNext = () => { if (hasNext) fetchRequests(page + 1); };
@@ -171,12 +171,13 @@ export default function UrgentRequests() {
             <div className={styles.filterBar}>
                 <input
                     type="text"
-                    placeholder="Search pulses..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search requests..."
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { setSearch(searchInput); setMinPrice(minPriceInput); setMaxPrice(maxPriceInput); setPage(1); } }}
                 />
 
-                <select value={category} onChange={(e) => setCategory(e.target.value)}>
+                <select value={category} onChange={(e) => { setCategory(e.target.value); setPage(1); }}>
                     <option value="">All Categories</option>
 
                     {CATEGORIES.map((cat) => (
@@ -189,18 +190,20 @@ export default function UrgentRequests() {
                 <input
                     type="number"
                     placeholder="Min Price"
-                    value={minPrice}
-                    onChange={(e) => setMinPrice(e.target.value)}
+                    value={minPriceInput}
+                    onChange={(e) => setMinPriceInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { setSearch(searchInput); setMinPrice(minPriceInput); setMaxPrice(maxPriceInput); setPage(1); } }}
                 />
 
                 <input
                     type="number"
                     placeholder="Max Price"
-                    value={maxPrice}
-                    onChange={(e) => setMaxPrice(e.target.value)}
+                    value={maxPriceInput}
+                    onChange={(e) => setMaxPriceInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { setSearch(searchInput); setMinPrice(minPriceInput); setMaxPrice(maxPriceInput); setPage(1); } }}
                 />
 
-                <button className={styles.filterBtn} onClick={() => fetchRequests(1)}>Search</button>
+                <button className={styles.filterBtn} onClick={() => { setSearch(searchInput); setMinPrice(minPriceInput); setMaxPrice(maxPriceInput); setPage(1); }}>Search</button>
             </div>
 
             <div className={styles.urgentRequestsGrid}>

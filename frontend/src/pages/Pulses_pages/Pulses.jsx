@@ -14,6 +14,10 @@ export default function Pulses() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
+    const [searchInput, setSearchInput] = useState("");
+    const [minPriceInput, setMinPriceInput] = useState("");
+    const [maxPriceInput, setMaxPriceInput] = useState("");
+
     const [search, setSearch] = useState("");
     const [category, setCategory] = useState("");
     const [pulseType, setPulseType] = useState("");
@@ -76,11 +80,8 @@ export default function Pulses() {
     }, []);
 
     useEffect(() => {
-        const delay = setTimeout(() => {
-            fetchPulses(1);
-        }, 400);
-
-        return () => clearTimeout(delay);
+        setPage(1);
+        fetchPulses(1);
     }, [search, category, pulseType, minPrice, maxPrice]);
 
     const navigate = useNavigate();
@@ -151,11 +152,12 @@ export default function Pulses() {
                     <input
                         type="text"
                         placeholder="Search pulses..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { setSearch(searchInput); setMinPrice(minPriceInput); setMaxPrice(maxPriceInput); setPage(1); } }}
                     />
 
-                    <select value={pulseType} onChange={(e) => setPulseType(e.target.value)}>
+                    <select value={pulseType} onChange={(e) => { setPulseType(e.target.value); setPage(1); }}>
                         <option value="">All Types</option>
                         <option value="servicii">Services</option>
                         <option value="obiecte">Objects</option>
@@ -164,18 +166,20 @@ export default function Pulses() {
                     <input
                         type="number"
                         placeholder="Min Price"
-                        value={minPrice}
-                        onChange={(e) => setMinPrice(e.target.value)}
+                        value={minPriceInput}
+                        onChange={(e) => setMinPriceInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { setSearch(searchInput); setMinPrice(minPriceInput); setMaxPrice(maxPriceInput); setPage(1); } }}
                     />
 
                     <input
                         type="number"
                         placeholder="Max Price"
-                        value={maxPrice}
-                        onChange={(e) => setMaxPrice(e.target.value)}
+                        value={maxPriceInput}
+                        onChange={(e) => setMaxPriceInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { setSearch(searchInput); setMinPrice(minPriceInput); setMaxPrice(maxPriceInput); setPage(1); } }}
                     />
 
-                    <button className={styles.filterBtn} onClick={() => fetchPulses(1)}>Search</button>
+                    <button className={styles.filterBtn} onClick={() => { setSearch(searchInput); setMinPrice(minPriceInput); setMaxPrice(maxPriceInput); setPage(1); }}>Search</button>
                 </div>
 
                 <div className={styles.urgentRequestsGrid}>

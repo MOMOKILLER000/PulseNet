@@ -1286,7 +1286,7 @@ export default function Profile() {
     };
 
     const handleNext = () => {
-        if (currentIndex + itemsPerPage < filteredRequests.length) {
+        if (currentIndex + itemsPerPage < filteredPulses.length) {
             setCurrentIndex(prev => prev + itemsPerPage);
         }
     };
@@ -1767,12 +1767,12 @@ export default function Profile() {
                                                             />
                                                         ) : (
                                                             <span className={styles.imagePlaceholder}>
-                      {pulseFilter === "obiecte" ? (
-                          <Boxes size={80} color={"black"} />
-                      ) : (
-                          <BriefcaseBusiness size={80} color={"black"} />
-                      )}
-                    </span>
+                                                              {pulseFilter === "obiecte" ? (
+                                                                  <Boxes size={80} color={"black"} />
+                                                              ) : (
+                                                                  <BriefcaseBusiness size={80} color={"black"} />
+                                                              )}
+                                                            </span>
                                                         )}
                                                     </div>
 
@@ -1806,8 +1806,8 @@ export default function Profile() {
                                                             <DollarSign color={"#99cb91"} />
                                                             {pulse.price != null && (
                                                                 <span className="font-bold">
-                        {pulse.price} {pulse.currencyType || "lei"}
-                      </span>
+                                                                {pulse.price} {pulse.currencyType || "lei"}
+                                                              </span>
                                                             )}
                                                         </div>
                                                     </div>
@@ -1852,10 +1852,10 @@ export default function Profile() {
                                                     &larr; Prev
                                                 </motion.button>
 
-                                                <span className={styles.carouselIndicator}>
-                {Math.floor(currentIndex / itemsPerPage) + 1} /{" "}
-                                                    {Math.ceil(filteredPulses.length / itemsPerPage)}
-              </span>
+                                                                                    <span className={styles.carouselIndicator}>
+                                                    {Math.floor(currentIndex / itemsPerPage) + 1} /{" "}
+                                                                                        {Math.ceil(filteredPulses.length / itemsPerPage)}
+                                                  </span>
 
                                                 <motion.button
                                                     {...btnMotion}
@@ -1902,8 +1902,8 @@ export default function Profile() {
                                                             />
                                                         ) : (
                                                             <span className={styles.imagePlaceholder}>
-                    <AlertCircle size={80} color={"black"} />
-                </span>
+                                                        <AlertCircle size={80} color={"black"} />
+                                                    </span>
                                                         )}
                                                     </div>
 
@@ -1941,8 +1941,8 @@ export default function Profile() {
                                                             <DollarSign color={"#99cb91"} />
                                                             {request.price != null && (
                                                                 <span className="font-bold">
-                        Max Price: {request.price} {request.currencyType || "lei"}
-                    </span>
+                                                                Max Price: {request.price} {request.currencyType || "lei"}
+                                                            </span>
                                                             )}
                                                         </div>
                                                     </div>
@@ -2005,12 +2005,12 @@ export default function Profile() {
                                         )}
                                     </>
                                 )}
-                            </div>
-                        </motion.div>
+                                        </div>
+                                    </motion.div>
 
-                        {/* — Place modal here, outside the card — */}
-                        {editingPulse && (
-                            <motion.div
+                                {/* — Place modal here, outside the card — */}
+                                {editingPulse && (
+                                    <motion.div
                                         className={styles.modalOverlay}
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
@@ -2162,9 +2162,9 @@ export default function Profile() {
                                     </form>
                                 </motion.div>
                             </motion.div>
-                        )}
+                                )}
 
-                        {editingRequest && (
+                            {editingRequest && (
                             <motion.div
                                 className={styles.modalOverlay}
                                 initial={{ opacity: 0 }}
@@ -2315,11 +2315,11 @@ export default function Profile() {
                                     </form>
                                 </motion.div>
                             </motion.div>
-                        )}
-                    </motion.div>
+                            )}
+                        </motion.div>
 
-                    <motion.div className={styles.contentArea}>
-                        <motion.div
+                        <motion.div className={styles.contentArea}>
+                            <motion.div
                             className={styles.card}
                             whileHover={{ y: -2, boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
                             transition={{ duration: 0.2 }}
@@ -2504,8 +2504,8 @@ export default function Profile() {
                                     </motion.button>
 
                                     <span className={styles.carouselIndicator}>
-                    {Math.floor(rentalCurrentIndex / rentalItemsPerPage) + 1} / {Math.ceil(currentRentalData.length / rentalItemsPerPage)}
-                </span>
+                            {Math.floor(rentalCurrentIndex / rentalItemsPerPage) + 1} / {Math.ceil(currentRentalData.length / rentalItemsPerPage)}
+                        </span>
 
                                     <motion.button
                                         {...btnMotion}
@@ -2672,8 +2672,8 @@ export default function Profile() {
                                     </motion.button>
 
                                     <span className={styles.carouselIndicator}>
-                    {Math.floor(requestCurrentIndex / requestItemsPerPage) + 1} / {Math.ceil(currentRequestData.length / requestItemsPerPage)}
-                </span>
+                        {Math.floor(requestCurrentIndex / requestItemsPerPage) + 1} / {Math.ceil(currentRequestData.length / requestItemsPerPage)}
+                    </span>
 
                                     <motion.button {...btnMotion}
                                                    onClick={handleRequestNext}
@@ -2686,12 +2686,12 @@ export default function Profile() {
                             )}
                         </motion.div>
                     </motion.div>
-                </div>
+                    </div>
 
-                {/* Delete Profile Picture Modal */}
-                <AnimatePresence>
-                {showDeleteModal && (
-                    <motion.div
+                    {/* Delete Profile Picture Modal */}
+                    <AnimatePresence>
+                    {showDeleteModal && (
+                        <motion.div
                         className={styles.modalOverlay}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -2718,13 +2718,13 @@ export default function Profile() {
                             </div>
                         </motion.div>
                     </motion.div>
-                )}
-                </AnimatePresence>
+                    )}
+                    </AnimatePresence>
 
 
-                <AnimatePresence>
-                {counterModal.show && (
-                    <motion.div
+                    <AnimatePresence>
+                    {counterModal.show && (
+                        <motion.div
                         className={styles.modalOverlay}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
