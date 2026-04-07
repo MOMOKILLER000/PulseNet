@@ -144,7 +144,9 @@ const SignUp = () => {
             const data = await resp.json();
             console.log(data);
             await initializeE2EE();
-            navigate('/');
+            setTimeout(() => {
+                window.location.href = '/'; // Redirect to home page
+            }, 0);
             const exp = new Date();
             exp.setHours(exp.getHours() + 6);
             localStorage.setItem('auth-token', 'true');

@@ -7,6 +7,7 @@ import styles from "../../styles/Pulses_pages/pulseTransaction.module.css";
 import { Map, MapMarker, MarkerContent } from "@/components/ui/map";
 import "maplibre-gl/dist/maplibre-gl.css";
 import Footer from "@/components/Footer";
+import Loading from "@/components/Loading";
 
 function getLocationCoords(location) {
     const defaultCoords = [27.5766, 47.1585];
@@ -227,7 +228,7 @@ export default function RequestOffer() {
         }
     };
 
-    if (loading) return <div className={styles.loader}>Loading...</div>;
+    if (loading) return <Loading />;
     if (!requestItem) return <div className={styles.loader}>Request not found</div>;
 
     const coords = getLocationCoords(requestItem.location);
