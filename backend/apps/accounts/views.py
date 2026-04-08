@@ -1781,7 +1781,7 @@ def search_users(request):
             "profile_picture": (
                 user.profile_picture.url if user.profile_picture else None
             ),
-            "private_account": user.private_account,
+            "private_account": user.is_private,
 
             "is_following": Follow.objects.filter(
                 follower=request.user,
@@ -1810,6 +1810,7 @@ def user_profile(request, user_id):
             user1_id=min(request.user.id, user.id),
             user2_id=max(request.user.id, user.id),
         ).exists()
+
 
         pulses = Pulse.objects.filter(user=user).prefetch_related('images')
         requests = UrgentRequest.objects.filter(user=user).prefetch_related('images')
@@ -1863,7 +1864,7 @@ def user_profile(request, user_id):
             "trustLevel": user.trust_level,
             "isVerified": user.is_verified,
             "onlineStatus": user.online_status,
-            "private_account": user.private_account,
+            "private_account": user.is_private,
             "is_following": Follow.objects.filter(
                 follower=request.user,
                 following=user
@@ -1896,7 +1897,7 @@ def follow_user(request, user_id):
     ).exists():
         return JsonResponse({"already_following": True})
 
-    if target.private_account:
+    if target.is_private:
         PendingFollow.objects.get_or_create(
             requester=request.user,
             target=target
@@ -2033,7 +2034,7 @@ def handle_create_conversation_sync(request, user2_id):
         u_first, u_second = (user1, user2) if user1.id < user2.id else (user2, user1)
 
         is_friend = Friendship.objects.filter(user1_id=u_first.id, user2_id=u_second.id).exists()
-        is_public = not getattr(user2, 'private_account', False)
+        is_public = not getattr(user2, 'is_private', False)
 
         if is_friend or is_public or from_pulse:
             conversation, created = DirectConversation.objects.get_or_create(
@@ -2310,7 +2311,6 @@ def create_alert(request):
                 reverse_geocode_location.delay("Alert", alert.id)
                 address_status = "Searching address..."
 
-            # Broadcast imediat prin WebSocket
             images = [request.build_absolute_uri(img.image.url) for img in alert.images.all()]
             user_avatar = request.build_absolute_uri(request.user.profile_picture.url) if hasattr(request.user,
                                                                                                   'profile_picture') and request.user.profile_picture else None

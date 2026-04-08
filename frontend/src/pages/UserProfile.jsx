@@ -17,7 +17,7 @@ import {
     Boxes,
     BriefcaseBusiness,
     Handshake,
-    Repeat, Undo, Save, MapPin, Zap
+    Repeat, Undo, Save, MapPin, Zap, Lock
 } from 'lucide-react';
 import Footer from "@/components/Footer";
 
@@ -290,223 +290,259 @@ export default function Profile() {
                     </motion.div>
 
 
-                    <motion.div className={styles.contentArea}>
+                    {(user?.is_following || !user?.private_account) ? (
+                        <>
+                            <motion.div className={styles.contentArea}>
+                                <motion.div
+                                    className={styles.card}
+                                    whileHover={{ y: -2, boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
+                                    transition={{ duration: 0.2 }}
+                                >
+                                    <div className={styles.pulsesHeader}>
+                                        <h2 className={styles.sectionTitle}>User listings</h2>
+                                        <div className={styles.filterButtonsRow}>
+                                            <motion.button
+                                                {...btnMotion}
+                                                className={`${styles.filterBtn} ${pulseFilter === "obiecte" ? styles.activeFilter : ""}`}
+                                                onClick={() => handleFilterChange("obiecte")}
+                                            >
+                                                Objects
+                                            </motion.button>
+                                            <motion.button
+                                                {...btnMotion}
+                                                className={`${styles.filterBtn} ${pulseFilter === "servicii" ? styles.activeFilter : ""}`}
+                                                onClick={() => handleFilterChange("servicii")}
+                                            >
+                                                Services
+                                            </motion.button>
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.objectGrid}>
+                                        {filteredPulses.length === 0 && (
+                                            <p className={styles.emptyState}>No posts of type „{pulseFilter}” yet.</p>
+                                        )}
+
+                                        {currentPulses.map((pulse) => (
+                                            <motion.div
+                                                key={pulse.id}
+                                                className={styles.objectCard}
+                                                onClick={() => navigate(`/pulse/${pulse.pulseType}/${pulse.id}`)}
+                                                initial={{ opacity: 0, y: 16 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ duration: 0.3 }}
+                                                whileHover={{ y: -3, cursor: "pointer", boxShadow: "0 8px 24px rgba(0,0,0,0.1)" }}
+                                            >
+                                                <div className={styles.objectImage}>
+                                                    {pulse.images && pulse.images.length > 0 ? (
+                                                        <img src={pulse.images[0]} alt={pulse.title} className={styles.pulseImage} />
+                                                    ) : (
+                                                        <span className={styles.imagePlaceholder}>
+                                        {pulseFilter === "obiecte" ? (
+                                            <Boxes size={80} color="black" />
+                                        ) : (
+                                            <BriefcaseBusiness size={80} color="black" />
+                                        )}
+                                    </span>
+                                                    )}
+                                                </div>
+
+                                                <div className={styles.objectInfo}>
+                                                    <h3 className={styles.objectName}>{pulse.title}</h3>
+
+                                                    {pulse.address && (
+                                                        <p className={styles.pulsePhone}>
+                                                            <MapPin size={16} color="black" style={{ marginTop: "2px", marginRight: "5px" }} />
+                                                            {pulse.address}
+                                                        </p>
+                                                    )}
+
+                                                    {pulse.phone_number && (
+                                                        <p className={styles.pulsePhone}>
+                                                            <Phone size={16} color="black" style={{ marginTop: "2px", marginRight: "5px" }} />
+                                                            {pulse.phone_number}
+                                                        </p>
+                                                    )}
+
+                                                    <div className="flex">
+                                                        <CalendarDays color="black" />
+                                                        <p className={styles.pulseDate}>
+                                                            Posted at:{" "}
+                                                            {pulse.timestamp
+                                                                ? new Date(pulse.timestamp.replace(" ", "T") + "Z").toLocaleString("ro-RO", {
+                                                                    day: "2-digit",
+                                                                    month: "2-digit",
+                                                                    year: "numeric",
+                                                                    hour: "2-digit",
+                                                                    minute: "2-digit",
+                                                                })
+                                                                : "—"}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="flex">
+                                                        <DollarSign color="green" />
+                                                        {pulse.price != null && (
+                                                            <span className="font-bold">
+                                            {pulse.price} {pulse.currencyType || "lei"}
+                                        </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        ))}
+                                    </div>
+
+                                    {filteredPulses.length > itemsPerPage && (
+                                        <div className={styles.carouselControls}>
+                                            <motion.button
+                                                {...btnMotion}
+                                                onClick={handlePrev}
+                                                disabled={currentIndex === 0}
+                                                className={styles.carouselBtn}
+                                            >
+                                                &larr; Prev
+                                            </motion.button>
+
+                                            <span className={styles.carouselIndicator}>
+                            {Math.floor(currentIndex / itemsPerPage) + 1} / {Math.ceil(filteredPulses.length / itemsPerPage)}
+                        </span>
+
+                                            <motion.button
+                                                {...btnMotion}
+                                                onClick={handleNext}
+                                                disabled={currentIndex + itemsPerPage >= filteredPulses.length}
+                                                className={styles.carouselBtn}
+                                            >
+                                                Next &rarr;
+                                            </motion.button>
+                                        </div>
+                                    )}
+                                </motion.div>
+                            </motion.div>
+
+                            <motion.div className={styles.contentArea}>
+                                <motion.div
+                                    className={styles.card}
+                                    whileHover={{ y: -2, boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
+                                    transition={{ duration: 0.2 }}
+                                >
+                                    <div className={styles.pulsesHeader}>
+                                        <h2 className={styles.sectionTitle}>User's requests</h2>
+                                    </div>
+
+                                    <div className={styles.objectGrid}>
+                                        {requests.length === 0 && <p className={styles.emptyState}>No requests yet.</p>}
+
+                                        {currentRequests.map((req) => (
+                                            <motion.div
+                                                key={req.id}
+                                                className={styles.objectCard}
+                                                onClick={() => navigate(`/request/${req.id}`)}
+                                                initial={{ opacity: 0, y: 16 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ duration: 0.3 }}
+                                                whileHover={{ y: -3, cursor: "pointer", boxShadow: "0 8px 24px rgba(0,0,0,0.1)" }}
+                                            >
+                                                <div className={styles.objectImage}>
+                                                    {req.images && req.images.length > 0 ? (
+                                                        <img src={req.images[0]} alt={req.title} className={styles.pulseImage} />
+                                                    ) : (
+                                                        <span className={styles.imagePlaceholder}>
+                                        <Zap size={80} color="black" />
+                                    </span>
+                                                    )}
+                                                </div>
+
+                                                <div className={styles.objectInfo}>
+                                                    <h3 className={styles.objectName}>{req.title}</h3>
+
+                                                    {req.address && (
+                                                        <p className={styles.pulsePhone}>
+                                                            <MapPin size={16} color="black" style={{ marginTop: "2px", marginRight: "5px" }} />
+                                                            {req.address}
+                                                        </p>
+                                                    )}
+
+                                                    <div className="flex">
+                                                        <CalendarDays color="black" />
+                                                        <p className={styles.pulseDate}>
+                                                            Posted:{" "}
+                                                            {req.timestamp
+                                                                ? new Date(req.timestamp.replace(" ", "T") + "Z").toLocaleString("ro-RO", {
+                                                                    day: "2-digit",
+                                                                    month: "2-digit",
+                                                                    year: "numeric",
+                                                                    hour: "2-digit",
+                                                                    minute: "2-digit",
+                                                                })
+                                                                : "—"}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="flex">
+                                                        <DollarSign color="green" />
+                                                        {req.max_price != null && (
+                                                            <span className="font-bold">
+                                            Max: {req.max_price} {req.currencyType || "lei"}
+                                        </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        ))}
+                                    </div>
+
+                                    {requests.length > itemsPerPage && (
+                                        <div className={styles.carouselControls}>
+                                            <motion.button
+                                                {...btnMotion}
+                                                onClick={handleRequestsPrev}
+                                                disabled={requestsCurrentIndex === 0}
+                                                className={styles.carouselBtn}
+                                            >
+                                                &larr; Prev
+                                            </motion.button>
+
+                                            <span className={styles.carouselIndicator}>
+                            {Math.floor(requestsCurrentIndex / itemsPerPage) + 1} / {Math.ceil(requests.length / itemsPerPage)}
+                        </span>
+
+                                            <motion.button
+                                                {...btnMotion}
+                                                onClick={handleRequestsNext}
+                                                disabled={requestsCurrentIndex + itemsPerPage >= requests.length}
+                                                className={styles.carouselBtn}
+                                            >
+                                                Next &rarr;
+                                            </motion.button>
+                                        </div>
+                                    )}
+                                </motion.div>
+                            </motion.div>
+                        </>
+                    ) : (
                         <motion.div
-                            className={styles.card}
-                            whileHover={{ y: -2, boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
+                            className={styles.contentArea}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.2 }}
                         >
+                            <div className={styles.card}>
+                                <div className={styles.lockContainer}>
+                                    <div className={styles.lockIconWrapper}>
+                                        <Lock size={32} />
+                                    </div>
 
-                            <div className={styles.pulsesHeader}>
-                                <h2 className={styles.sectionTitle}>User listings</h2>
-                                <div className={styles.filterButtonsRow}>
-                                    <motion.button {...btnMotion}
-                                                   className={`${styles.filterBtn} ${pulseFilter === "obiecte" ? styles.activeFilter : ""}`}
-                                                   onClick={() => handleFilterChange("obiecte")}
-                                    >
-                                        Objects
-                                    </motion.button>
-                                    <motion.button {...btnMotion}
-                                                   className={`${styles.filterBtn} ${pulseFilter === "servicii" ? styles.activeFilter : ""}`}
-                                                   onClick={() => handleFilterChange("servicii")}
-                                    >
-                                        Services
-                                    </motion.button>
+                                    <h2 className={styles.lockTitle}>Private content</h2>
+
+                                    <p className={styles.lockText}>
+                                        Follow this user to see their listings and requests.
+                                    </p>
                                 </div>
                             </div>
-
-                            <div className={styles.objectGrid}>
-                                {filteredPulses.length === 0 && (
-                                    <p className={styles.emptyState}>No posts of type „{pulseFilter}” yet.</p>
-                                )}
-
-                                {currentPulses.map((pulse) => (
-                                    <motion.div
-                                        key={pulse.id}
-                                        className={styles.objectCard}
-                                        onClick={() => navigate(`/pulse/${pulse.pulseType}/${pulse.id}`)}
-                                        initial={{ opacity: 0, y: 16 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ duration: 0.3}}
-                                        whileHover={{ y: -3, cursor: "pointer", boxShadow: "0 8px 24px rgba(0,0,0,0.1)" }} >
-                                        <div className={styles.objectImage}>
-                                            {pulse.images && pulse.images.length > 0 ? (
-                                                <img src={pulse.images[0]} alt={pulse.title} className={styles.pulseImage} />
-                                            ) : (
-                                                <span className={styles.imagePlaceholder}>{pulseFilter === "obiecte" ? <Boxes size={80} color={'black'}/> : <BriefcaseBusiness size={80} color={'black'}/>}</span>
-                                            )}
-                                        </div>
-                                        <div className={styles.objectInfo}>
-                                            <h3 className={styles.objectName}>{pulse.title}</h3>
-
-                                            {pulse.address && (
-                                                <p className={styles.pulsePhone}>
-                                                    <MapPin size={16} color={'black'} style={{marginTop: '2px', marginRight: '5px'}}/>
-                                                    {pulse.address}
-                                                </p>
-                                            )}
-
-                                            {pulse.phone_number && (
-                                                <p className={styles.pulsePhone}>
-                                                    <Phone size={16} color={'black'} style={{marginTop: '2px', marginRight: '5px'}}/>
-                                                    {pulse.phone_number}
-                                                </p>
-                                            )}
-
-
-
-                                            <div className='flex'>
-                                                <CalendarDays color={'black'}/>
-                                                <p className={styles.pulseDate}>
-                                                    Posted at:{" "}
-                                                    {pulse.timestamp ? new Date(pulse.timestamp.replace(" ", "T") + "Z").toLocaleString("ro-RO", {
-                                                        day: "2-digit",
-                                                        month: "2-digit",
-                                                        year: "numeric",
-                                                        hour: "2-digit",
-                                                        minute: "2-digit",
-                                                    }) : "—"}
-                                                </p>
-
-                                            </div>
-
-
-
-                                            <div className='flex'>
-                                                <DollarSign color={'green'}/>
-                                                {pulse.price != null && (
-                                                    <span className="font-bold">
-                                    {pulse.price} {pulse.currencyType || "lei"}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </div>
-
-                            {filteredPulses.length > itemsPerPage && (
-                                <div className={styles.carouselControls}>
-                                    <motion.button {...btnMotion}
-                                                   onClick={handlePrev}
-                                                   disabled={currentIndex === 0}
-                                                   className={styles.carouselBtn}
-                                    >
-                                        &larr; Prev
-                                    </motion.button>
-
-                                    <span className={styles.carouselIndicator}>
-                                        {Math.floor(currentIndex / itemsPerPage) + 1} / {Math.ceil(filteredPulses.length / itemsPerPage)}
-                                    </span>
-
-                                    <motion.button {...btnMotion}
-                                                   onClick={handleNext}
-                                                   disabled={currentIndex + itemsPerPage >= filteredPulses.length}
-                                                   className={styles.carouselBtn}
-                                    >
-                                        Next &rarr;
-                                    </motion.button>
-                                </div>
-                            )}
                         </motion.div>
-                    </motion.div>
-
-                    <motion.div className={styles.contentArea}>
-                        <motion.div
-                            className={styles.card}
-                            whileHover={{ y: -2, boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <div className={styles.pulsesHeader}>
-                                <h2 className={styles.sectionTitle}>User's requests</h2>
-                            </div>
-
-                            <div className={styles.objectGrid}>
-                                {requests.length === 0 && (
-                                    <p className={styles.emptyState}>No requests yet.</p>
-                                )}
-
-                                {currentRequests.map((req) => (
-                                    <motion.div
-                                        key={req.id}
-                                        className={styles.objectCard}
-                                        onClick={() => navigate(`/request/${req.id}`)}
-                                        initial={{ opacity: 0, y: 16 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ duration: 0.3 }}
-                                        whileHover={{ y: -3, cursor: "pointer", boxShadow: "0 8px 24px rgba(0,0,0,0.1)" }}
-                                    >
-                                        <div className={styles.objectImage}>
-                                            {req.images && req.images.length > 0 ? (
-                                                <img src={req.images[0]} alt={req.title} className={styles.pulseImage} />
-                                            ) : (
-                                                <span className={styles.imagePlaceholder}>
-                                                    <Zap size={80} color={'black'}/>
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className={styles.objectInfo}>
-                                            <h3 className={styles.objectName}>{req.title}</h3>
-
-                                            {req.address && (
-                                                <p className={styles.pulsePhone}>
-                                                    <MapPin size={16} color={'black'} style={{marginTop: '2px', marginRight: '5px'}}/>
-                                                    {req.address}
-                                                </p>
-                                            )}
-
-                                            <div className='flex'>
-                                                <CalendarDays color={'black'}/>
-                                                <p className={styles.pulseDate}>
-                                                    Posted:{" "}
-                                                    {req.timestamp ? new Date(req.timestamp.replace(" ", "T") + "Z").toLocaleString("ro-RO", {
-                                                        day: "2-digit",
-                                                        month: "2-digit",
-                                                        year: "numeric",
-                                                        hour: "2-digit",
-                                                        minute: "2-digit",
-                                                    }) : "—"}
-                                                </p>
-                                            </div>
-
-                                            <div className='flex'>
-                                                <DollarSign color={'green'}/>
-                                                {req.max_price != null && (
-                                                    <span className="font-bold">
-                                    Max: {req.max_price} {req.currencyType || "lei"}
-                                </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </div>
-
-                            {requests.length > itemsPerPage && (
-                                <div className={styles.carouselControls}>
-                                    <motion.button {...btnMotion}
-                                                   onClick={handleRequestsPrev}
-                                                   disabled={requestsCurrentIndex === 0}
-                                                   className={styles.carouselBtn}
-                                    >
-                                        &larr; Prev
-                                    </motion.button>
-
-                                    <span className={styles.carouselIndicator}>
-                                        {Math.floor(requestsCurrentIndex / itemsPerPage) + 1} / {Math.ceil(requests.length / itemsPerPage)}
-                                    </span>
-
-                                    <motion.button {...btnMotion}
-                                                   onClick={handleRequestsNext}
-                                                   disabled={requestsCurrentIndex + itemsPerPage >= requests.length}
-                                                   className={styles.carouselBtn}
-                                    >
-                                        Next &rarr;
-                                    </motion.button>
-                                </div>
-                            )}
-                        </motion.div>
-                    </motion.div>
+                    )}
             </div>
         </div>
             <Footer />

@@ -47,7 +47,6 @@ class User(AbstractUser):
 
     trust_score = models.FloatField(default=0)
     is_verified = models.BooleanField(default=False)
-    private_account = models.BooleanField(default=False)
 
     skills = models.JSONField(default=list, blank=True)
 

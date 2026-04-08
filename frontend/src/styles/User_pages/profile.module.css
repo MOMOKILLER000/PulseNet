@@ -1343,6 +1343,58 @@
 
 .noSkillsText { color: var(--color-text-faint); font-size: 14px; font-style: italic; }
 
+
+.lockContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 50px 30px;
+    min-height: 280px;
+    width: 100%;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+    transition: all 0.25s ease;
+}
+
+.lockContainer:hover {
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.08);
+}
+
+
+.lockIconWrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: white;
+    margin-bottom: 16px;
+    box-shadow: 0 6px 18px rgba(0, 191, 165, 0.3);
+}
+
+
+.lockTitle {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #222;
+}
+
+
+.lockText {
+    font-size: 14px;
+    color: #666;
+    max-width: 260px;
+    line-height: 1.5;
+}
+
 /* ============================================================
    PULSE-TYPE DROPDOWN (standalone)
    ============================================================ */
