@@ -42,7 +42,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             other_user = await self._get_other_direct_participant(user, self.conversation)
             if other_user:
                 is_friend = await self._are_friends(user, other_user)
-                is_public = not getattr(other_user, "private_account", False)
+                is_public = not getattr(other_user, "is_private", False)
                 if not (is_friend or is_public):
                     await self.close(code=4005)
                     return
